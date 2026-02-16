@@ -1,0 +1,675 @@
+# ============================================================
+#  OCRtoODT — Configuration File
+#  Location: ./config.yaml
+#  All paths are absolute and correspond to the self-contained installation.
+# ============================================================
+
+
+program_root: /home/ro/PycharmProjects/OCRtoODT/ # Programm root Folder
+# --- General input/output directories ---
+
+
+mode: development
+base_dir: /home/ro/C++Projects/OCRtoODT/
+
+
+general:
+  # Directory where input images or PDFs are copied on import
+  input_dir: input
+
+  # Final output ODT file path (relative to project root)
+  output_file: output/result.odt
+
+  # Logical preprocess output directory (actual path is cache/preprocess/)
+  preprocess_path: preprocess
+
+  # Logical OCR output directory (actual path is cache/ocr/)
+  ocr_path: cache/ocr
+
+  # Global debug switch:
+  # When true, intermediate results of all steps may be written to disk
+  # for inspection and troubleshooting.     true
+  debug_mode: false
+
+  # Enable parallel execution if system supports it
+  parallel_enabled: true
+
+  # Number of worker processes:
+  # - "auto" means system decides optimal value based on CPU
+  # - numeric value can be set manually via settings UI (future)
+  num_processes: auto
+
+  # Global data execution mode:
+  # - ram_only  : all steps work strictly in memory
+  # - disk_only : disk is used as primary data source (debug / low-RAM systems)
+  # - auto : прогоамма решает какой mode булет в зависимости от количества свободной памяти.
+  mode: auto
+
+
+
+
+logging:
+  level: 3 # Logging 1.ERROR only, 2.WARNING + ERROR, 3.INFO + WARNING + ERROR, 4.Verbose(DEBUG + Performance)
+  file_path: ocrtoodt.log # Detailed OCR pipeline log
+  file_output: false
+  gui_output: true
+  enabled: true
+  console_output: true
+
+
+# Thread settings for UI-related async work:
+threading:
+
+  # PDF providers (PdfPageProvider)
+  pdf_thumbnail_threads: 1    # For rendering PDF thumbnails
+  pdf_page_threads: 2         # For full-page rendering
+
+  # Image providers (ImageThumbnailProvider)
+  image_thumbnail_threads: 2  # For async thumbnails of images
+
+  # Auto mode: override all thread counts based on CPU cores
+  auto: true                # true → ignore numbers above, calculate automatically   false
+
+
+
+
+
+# ============================================================
+#  IMAGE PREPROCESSING CONFIGURATION
+#  This section controls ALL image preprocessing before OCR.
+#
+#  Key principle:
+#  - Every filter can be ENABLED or DISABLED
+#  - Every filter has TUNABLE parameters
+#  - Four independent profiles exist
+# ============================================================
+
+preprocess:
+
+  # ----------------------------------------------------------
+  # Active preprocessing profile
+  #
+  # Possible values:
+  #   - mobile       : camera photos (shadows, uneven lighting)
+  #   - scanner      : clean scanner images (minimal processing)
+  #   - low_quality  : blurry / noisy / small images
+  #   - pdf_auto     : automatic selection (future)
+  # ----------------------------------------------------------
+  profile: pdf_auto     # пакет инструментов для обработки изображений из разных истоычников.
+
+
+  # ----------------------------------------------------------
+  # PROFILE DEFINITIONS
+  # Each profile defines its OWN filter chain and parameters
+  # ----------------------------------------------------------
+
+  profiles:
+
+    # ========================================================
+    # PROFILE: MOBILE (photos from phone)
+    # ========================================================
+    mobile:
+
+      # --- Shadow removal (strong, dangerous filter)
+      shadow_removal:
+        enabled: true
+        # Morphology kernel size (odd number)
+        # Range: 15 – 101
+        # Larger value = stronger shadow suppression
+        # Too large value may remove thin letters
+        morph_kernel: 31
+
+      # --- Background normalization
+      background_normalization:
+        enabled: true
+        # Epsilon to avoid division by zero
+        # Range: 0.0001 – 1.0
+        epsilon: 0.001
+
+      # --- Gaussian blur (noise reduction)
+      gaussian_blur:
+        enabled: true
+        # Kernel size (odd number)
+        # Range: 3 – 21
+        kernel_size: 5
+        # Sigma value
+        # Range: 0.1 – 5.0
+        sigma: 1.0
+
+      # --- CLAHE (local contrast enhancement)
+      clahe:
+        enabled: true
+        # Clip limit
+        # Range: 1.0 – 10.0
+        clip_limit: 2.0
+        # Tile grid size
+        # Range: 4 – 16
+        tile_grid_size: 8
+
+      # --- Sharpen (VERY DANGEROUS for OCR)
+      sharpen:
+        enabled: true
+        # Strength multiplier
+        # Range: 0.1 – 2.0
+        strength: 0.5
+
+      # --- Adaptive threshold (binarization)
+      adaptive_threshold:
+        enabled: true
+        # Block size (odd number)
+        # Range: 11 – 101
+        block_size: 31
+        # Constant subtracted from mean
+        # Range: -20 – 20
+        C: 5
+
+      sauvola:
+        enabled: false
+        window_size: 31   # odd, 15–101
+        k: 0.34           # 0.1–0.6
+        R: 128            # 64–128
+
+
+    # ========================================================
+    # PROFILE: SCANNER (clean scans, RECOMMENDED DEFAULT)
+    # ========================================================
+    scanner:
+
+      shadow_removal:
+        enabled: false
+
+      background_normalization:
+        enabled: true
+        blur_ksize: 101    # большой радиус = медленное изменение фона
+        epsilon: 0.01
+
+      gaussian_blur:
+        enabled: true
+        # Minimal blur to suppress scanner noise
+        kernel_size: 3
+        sigma: 0.5
+
+      clahe:
+        enabled: false
+        clip_limit: 2.0
+        tile_grid_size: 8
+
+      sharpen:
+        enabled: false
+        strength: 0.8
+
+      adaptive_threshold:
+        enabled: false
+        block_size: 31
+        C: 5
+
+      sauvola:
+        enabled: false
+        window_size: 31   # odd, 15–101
+        k: 0.34           # 0.1–0.6
+        R: 128            # 64–128
+
+    # ========================================================
+    # PROFILE: LOW QUALITY (old books, blurry images)
+    # ========================================================
+    low_quality:
+
+      shadow_removal:
+        enabled: false
+
+      background_normalization:
+        enabled: true
+        epsilon: 0.001
+
+      gaussian_blur:
+        enabled: true
+        kernel_size: 7
+        sigma: 1.5
+
+      clahe:
+        enabled: true
+        clip_limit: 3.0
+        tile_grid_size: 8
+
+      sharpen:
+        enabled: true
+        # Be very careful here
+        strength: 0.3
+
+      adaptive_threshold:
+        enabled: false
+
+
+      sauvola:
+        enabled: false
+        window_size: 31   # odd, 15–101
+        k: 0.34           # 0.1–0.6
+        R: 128            # 64–128
+
+
+    # ========================================================
+    # PROFILE: PDF AUTO (placeholder for future logic)
+    # ========================================================
+    pdf_auto:
+
+      # Currently behaves like scanner
+      shadow_removal:
+        enabled: false
+
+      background_normalization:
+        enabled: false
+
+      gaussian_blur:
+        enabled: true
+        kernel_size: 3
+        sigma: 0.8
+
+      clahe:
+        enabled: false
+
+      sharpen:
+        enabled: false
+
+      adaptive_threshold:
+        enabled: false
+
+
+      sauvola:
+        enabled: false
+        window_size: 31   # odd, 15–101
+        k: 0.34           # 0.1–0.6
+        R: 128            # 64–128
+
+
+
+
+## ============================================================
+# OCR ENGINE SETTINGS (STRUCTURE-FIRST OCR)
+# ============================================================
+
+ocr:
+
+  ocr_engine_path: thirdparty/tesseract/tesseract
+  tessdata_dir: thirdparty/tessdata/
+
+
+  # OCR languages (ORDER MATTERS)
+  # Will be joined as "rus+eng" for Tesseract
+  languages: "rus,eng"
+
+  available_languages:
+    - rus
+    - eng
+
+  # ------------------------------------------------------------
+  # DPI POLICY
+  # ------------------------------------------------------------
+
+  dpi_default: 300          # fallback for unknown sources
+  dpi_scan: 300             # scanned raster pages
+  dpi_vector: 600           # vector PDF (text-based)
+
+  # If image resolution is low (e.g. phone camera),
+  # OCR engine will override DPI automatically.
+  dpi_low_res_threshold: 1500   # px (longest side)
+  dpi_low_res_value: 96
+
+  # ------------------------------------------------------------
+  # TESSERACT ENGINE CONTROL
+  # ------------------------------------------------------------
+
+  tesseract_oem: 1           # 1 = LSTM only (recommended)
+  psm_1: 4             # main pass (single column)
+  psm_2: 3                      # auto layout
+  psm_3: 6                      # single uniform block
+
+
+
+
+
+  # ------------------------------------------------------------
+  # QUALITY CONTROL (used BEFORE 3_tsv)
+  # ------------------------------------------------------------
+
+tsv_quality:
+    min_words: 120
+    min_lines: 12
+    min_paragraphs: 3
+
+    max_blocks: 8
+    low_conf_threshold: 40
+    max_low_conf_ratio: 0.25
+
+
+
+# ============================================================
+# TSV STRUCTURAL ANALYSIS (STEP 3)
+#
+# This section controls Step 3 of the OCRtoODT pipeline:
+# transformation of verified OCR lines into a structural
+# page representation.
+#
+# Key principles:
+# - Step 3 works ONLY on verified line-level OCR data
+# - No text is modified at this stage
+# - No layout or document decisions are made
+# - All processing is performed IN MEMORY
+# - Disk output is for DEBUGGING ONLY
+# ============================================================
+
+tsv:
+
+  # ----------------------------------------------------------
+  # Enable / disable Step 3 (TSV structural analysis)
+  #
+  # When disabled:
+  #   - Step 3 is skipped entirely
+  #   - No PageStructureMap is produced
+  # ----------------------------------------------------------
+  enabled: true
+
+
+  # ----------------------------------------------------------
+  # Debug output settings
+  #
+  # IMPORTANT:
+  # - These options control ONLY diagnostic file output
+  # - They MUST NOT affect in-memory processing
+  # - All Step 3 results always exist in memory
+  # ----------------------------------------------------------
+  debug:
+
+    # --------------------------------------------------------
+    # Save PageStructureMap as human-readable JSON
+    #
+    # When enabled:
+    #   - page_xxxx.structure.json is written to disk
+    #   - intended for inspection and debugging ONLY
+    #
+    # When disabled:
+    #   - NO files are written
+    #   - processing remains fully in-memory
+    # --------------------------------------------------------
+    save_structure_json: true
+
+
+    # --------------------------------------------------------
+    # Output directory for debug artifacts
+    #
+    # This path is used ONLY if save_structure_json == true
+    # The directory will be created if it does not exist
+    # --------------------------------------------------------
+    output_dir: "cache/tsv/structure/"
+
+    save_line_table_tsv: true
+    line_table_output_dir: cache/tsv/lines
+
+
+
+# ============================================================
+# DOCUMENT RECONSTRUCTION (STEP 4)
+#
+# This section controls Step 4 of the OCRtoODT pipeline:
+# transformation of PageStructureMap (Step 3 output) into a
+# logical document representation (blocks/paragraphs/headings)
+# and a final text stream suitable for export (ODT/DOC/PDF).
+#
+# Key principles:
+# - Step 4 operates ONLY on PageStructureMap (Step 3)
+# - In preserve_lines mode: NO text modifications are allowed
+# - In reconstructed_text mode: optional text normalization rules
+#   may apply (e.g., hyphen merge)
+# - All processing is performed IN MEMORY
+# - Disk output is for DEBUGGING ONLY
+# ============================================================
+
+
+
+
+document:
+
+  # ----------------------------------------------------------
+  # Enable / disable Step 4 (document reconstruction)
+  #
+  # When disabled:
+  #   - Step 4 is skipped entirely
+  #   - No DocumentModel is produced
+  # ----------------------------------------------------------
+  enabled: true
+
+
+  # ----------------------------------------------------------
+  # Reconstruction mode
+  #
+  # preserve_lines:
+  #   - Paragraphs are reconstructed (block grouping)
+  #   - Each OCR line is preserved 1:1 as a DocumentLine
+  #   - NO hyphen merge, NO word joining across lines
+  #
+  # reconstructed_text:
+  #   - Paragraphs are reconstructed
+  #   - Lines may be merged into logical text
+  #   - Optional rules like hyphen merge may apply
+  # ----------------------------------------------------------
+  mode: reconstructed_text   # preserve_lines | reconstructed_text
+
+
+  # ----------------------------------------------------------
+  # Rule toggles (Step 4 logic)
+  #
+  # IMPORTANT:
+  # - In preserve_lines mode, hyphen_merge is forcibly disabled
+  # - paragraph_recovery + heading_detection are allowed in both modes
+  # ----------------------------------------------------------
+  # Rule toggles (Step 4 logic)
+  #
+  # IMPORTANT:
+  # - hyphen_merge applies ONLY in reconstructed_text mode (MODE A)
+  # - preserve_lines mode (MODE B) NEVER modifies text,
+  #   regardless of this flag
+  # ----------------------------------------------------------
+  rules:
+
+  # ----------------------------------------------------------
+  # hyphen_merge:
+  #   - Merges words split by line-break hyphenation
+  #     Example:
+  #       "посвя-" + "щена" → "посвящена"
+  #   - Applied BEFORE reflow (while lines are still separate)
+  #   - Disabled by default for safety
+  # ----------------------------------------------------------
+    hyphen_merge: true
+
+  # ----------------------------------------------------------
+  # paragraph_recovery:
+  #   - Enables paragraph boundary reconstruction
+  #   - Allowed in BOTH modes
+  # ----------------------------------------------------------
+    paragraph_recovery: true
+
+  # ----------------------------------------------------------
+  # heading_detection:
+  #   - Enables heading tagging (block-level)
+  #   - Allowed in BOTH modes
+  # ----------------------------------------------------------
+    heading_detection: true
+
+
+  # ----------------------------------------------------------
+  # Thresholds (heuristics parameters)
+  #
+  # These are Step 4 "interpretation" knobs based on Step 3 metrics.
+  # ----------------------------------------------------------
+  thresholds:
+
+    # New paragraph if vertical gap to previous line is greater than:
+    #   median_vertical_gap * gap_multiplier
+    paragraph_gap_multiplier: 2.0
+
+    # New paragraph if absolute indent delta is greater than:
+    #   median_indent_delta_abs * indent_multiplier
+    paragraph_indent_multiplier: 6.0
+
+    # Heading candidate if line is short enough
+    heading_max_chars: 40
+
+    # Heading candidate if vertical gap before is greater than:
+    #   median_vertical_gap * heading_gap_multiplier
+    heading_gap_multiplier: 2.5
+
+
+  # ----------------------------------------------------------
+  # Debug output settings
+  #
+  # IMPORTANT:
+  # - These options control ONLY diagnostic file output
+  # - They MUST NOT affect in-memory processing
+  # ----------------------------------------------------------
+  debug:
+
+    # Save DocumentPage as human-readable JSON
+    save_document_json: true
+
+    # Save full reconstructed text (for quick sanity check)
+    save_fulltext_txt: true
+
+    # Output directory for debug artifacts (created if missing)
+    output_dir: "cache/document/"
+
+
+# --- ODT document builder settings ---
+odt:
+
+  # ==========================================================
+  # ==== UI-controlled typography ============================
+  # ==========================================================
+
+  # Default font family (UI)
+  font_name: "Times New Roman"
+
+  # Font size in points (UI)
+  font_size_pt: 12
+
+  # Text alignment (UI) — left, center, right, justify
+  text_align: "justify"
+
+  # First line indent in millimeters (UI)
+  first_line_indent_mm: 10
+
+  # Paragraph spacing after paragraph (pt) (UI)
+  paragraph_spacing_after_pt: 6
+
+  # Line height as percentage (UI) — 100 = normal
+  line_height_percent: 120
+
+
+  # ==========================================================
+  # ==== Page layout =========================================
+  # ==========================================================
+
+  # Page margins in millimeters (UI)
+  margin_left_mm: 20
+  margin_right_mm: 15
+  margin_top_mm: 20
+  margin_bottom_mm: 15
+
+  # Insert page breaks between OCR pages (UI)
+  page_break: true
+
+
+  # ==========================================================
+  # ==== Structural normalization (UI-controlled) ============
+  # ==========================================================
+
+  # Maximum allowed consecutive empty lines (0–3)
+  # 0 = do not preserve empty lines
+  max_empty_lines: 1
+
+
+# ==========================================================
+# ==== Internal OCR layout detection (not shown in UI) =====
+# ==========================================================
+
+# Threshold for detecting blank lines
+gap_empty_threshold: 1.9
+
+# Paragraph detection tuning
+paragraph_indent_min: 99.99
+paragraph_indent_max: 99.99
+paragraph_continue_max: 125
+paragraph_indent_spaces: 4
+
+# Advanced definition-list detection
+definition_left_min: 500
+definition_left_max: 600
+definition_right_min: 3000
+definition_right_max: 3960
+definition_gap_threshold: 1.2
+definition_gap_min: 40
+
+# Style names inside ODT
+styles:
+  title: "Title"
+  paragraph: "Text Body"
+
+
+
+# --- GUI (Qt interface) settings ---
+ui:
+  theme_mode: dark               # light / dark / auto / system
+  custom_qss: ""                 # optional path to user .qss
+
+  app_font_family: ""            # if empty → системный
+  app_font_size: 11              # base UI font size
+  font_size: 11                  # старый ключ, синхронизируем с app_font_size
+  log_font_size: 10              # new: log font size
+
+  toolbar_style: "icons_text"    # icons / text / icons_text
+  thumbnail_size: 130            # size in px
+
+  notify_on_finish: true         # Show notification when OCR completes
+  play_sound_on_finish: true     # Play success sound after processing
+  sound_volume: 70               # Volume level (0–100)
+  sound_path: "sounds/done.wav"  # Path inside resources.qrc
+
+  language: en                   # inttrface language
+
+
+  # ----------------------------------------------------------
+  # Control level for settings UI
+  #
+  # false → Standard mode:
+  #         показываем только безопасные/упрощённые настройки.
+  #
+  # true  → Professional mode:
+  #         показываем детальные параметры (предобработка/OCR и т.д.).
+  #         Изменение этих параметров влияет на качество OCR.
+  # ----------------------------------------------------------
+  expert_mode: false
+  show_preprocess_tab: false # false убирает вкладку Preprocess, true показываем вкладку Preprocess.
+  show_logging_tab: false  # false → вкладка Logging скрыта
+
+
+theme:
+  active_pack: "dark"
+  custom_qss: ""
+  tokens:
+    bg1: "#1e1e1e"
+    bg2: "#2c2c2c"
+    text: "#e0e0e0"
+    textMuted: "#aaaaaa"
+    border: "#3a3a3a"
+    primary: "#3B82F6"
+    accent: "#60A5FA"
+    danger: "#ff5555"
+    radius: "4px"
+    padding: "4px"
+
+
+
+
+# --- Layout classification ---
+classification:
+  caps_ratio: 0.5              # Minimum capital-letter ratio to consider text as title
+  center_tolerance_px: 20      # Pixel tolerance for center alignment detection
+
