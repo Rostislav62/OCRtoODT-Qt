@@ -50,6 +50,10 @@ jobs:
          libtesseract-dev \
          libleptonica-dev
 
+
+    - name: Clean
+      run: rm -rf build
+
     # --------------------------------------------------------
     # Configure (Release)
     # --------------------------------------------------------

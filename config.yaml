@@ -289,9 +289,10 @@ preprocess:
 
 ocr:
 
-  ocr_engine_path: thirdparty/tesseract/tesseract
-  tessdata_dir: thirdparty/tessdata/
-
+    # ocr_engine_path: thirdparty/tesseract/tesseract
+    # tessdata_dir: thirdparty/tessdata/
+  ocr_engine_path: tesseract
+  tessdata_dir: ""
 
   # OCR languages (ORDER MATTERS)
   # Will be joined as "rus+eng" for Tesseract
