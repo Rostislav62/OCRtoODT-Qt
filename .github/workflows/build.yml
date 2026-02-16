@@ -20,10 +20,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-            cmake build-essential \
-            qt6-base-dev qt6-tools-dev \
-            libpoppler-qt6-dev \
-            libopencv-dev
+           cmake build-essential ninja-build \
+           qt6-base-dev qt6-tools-dev qt6-multimedia-dev \
+           libpoppler-qt6-dev \
+           libopencv-dev \
+           libtesseract-dev libleptonica-dev
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
