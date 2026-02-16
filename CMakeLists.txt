@@ -486,3 +486,24 @@ message(STATUS "Poppler-Qt6 found  : YES (pkg-config)")
 message(STATUS "OpenCV found       : YES")
 message(STATUS "Tesseract          : SYSTEM (pkg-config)")
 message(STATUS "------------------------------------------------------------")
+
+
+# ============================================================
+# Install rules (required for AppImage)
+# ============================================================
+
+install(TARGETS OCRtoODT
+    RUNTIME DESTINATION bin
+)
+
+install(FILES config.yaml
+    DESTINATION bin
+)
+
+install(FILES resources/icons/ocrtoodt.png
+    DESTINATION share/icons/hicolor/256x256/apps
+)
+
+install(FILES OCRtoODT.desktop
+    DESTINATION share/applications
+)

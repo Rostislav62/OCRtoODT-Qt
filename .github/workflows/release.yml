@@ -13,7 +13,7 @@
 #          * stable dependency resolution
 # ============================================================
 
-name: Build Release (Linux)
+name: Build AppImage Release
 
 on:
   push:
@@ -22,60 +22,80 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
-    # --------------------------------------------------------
-    # Checkout repository
-    # --------------------------------------------------------
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    # --------------------------------------------------------
-    # Install system dependencies
-    # --------------------------------------------------------
-    - name: Install dependencies
-      run: |
-       sudo apt update
-       sudo apt install -y \
-         build-essential \
-         cmake \
-         ninja-build \
-         pkg-config \
-         qt6-base-dev \
-         qt6-tools-dev \
-         qt6-multimedia-dev \
-         libpoppler-qt6-dev \
-         libopencv-dev \
-         libtesseract-dev \
-         libleptonica-dev
+      # ------------------------------------------------------------
+      # Install dependencies
+      # ------------------------------------------------------------
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            pkg-config \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-multimedia-dev \
+            libpoppler-qt6-dev \
+            libopencv-dev \
+            libtesseract-dev \
+            libleptonica-dev \
+            wget
 
+      # ------------------------------------------------------------
+      # Configure + Build
+      # ------------------------------------------------------------
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -G Ninja
 
-    - name: Clean
-      run: rm -rf build
+      - name: Build
+        run: cmake --build build
 
-    # --------------------------------------------------------
-    # Configure (Release)
-    # --------------------------------------------------------
-    - name: Configure
-      run: |
-        cmake -S . -B build \
-          -G Ninja \
-          -DCMAKE_BUILD_TYPE=Release
+      # ------------------------------------------------------------
+      # Install into AppDir
+      # ------------------------------------------------------------
+      - name: Install into AppDir
+        run: |
+          cmake --install build --prefix AppDir/usr
 
-    # --------------------------------------------------------
-    # Build
-    # --------------------------------------------------------
-    - name: Build
-      run: |
-        cmake --build build
+      # ------------------------------------------------------------
+      # Download linuxdeploy
+      # ------------------------------------------------------------
+      - name: Download linuxdeploy
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-plugin-qt-x86_64.AppImage
 
-    # --------------------------------------------------------
-    # Upload binary artifact
-    # --------------------------------------------------------
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: OCRtoODT-Linux
-        path: build/OCRtoODT
+      # ------------------------------------------------------------
+      # Build AppImage
+      # ------------------------------------------------------------
+      - name: Create AppImage
+        env:
+          QMAKE: /usr/lib/qt6/bin/qmake
+        run: |
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/OCRtoODT \
+            --desktop-file AppDir/usr/share/applications/OCRtoODT.desktop \
+            --icon-file resources/icons/ocrtoodt.png \
+            --plugin qt \
+            --output appimage
+
+      # ------------------------------------------------------------
+      # Upload Release Asset
+      # ------------------------------------------------------------
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: OCRtoODT-x86_64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
