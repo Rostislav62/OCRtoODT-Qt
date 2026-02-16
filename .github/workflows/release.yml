@@ -1,4 +1,19 @@
-name: Build Release AppImage
+# ============================================================
+#  OCRtoODT — GitHub Actions Release Workflow
+#  File: .github/workflows/release.yml
+#
+#  Responsibility:
+#      - Build Release binary on tag push (v*)
+#      - Use SYSTEM dependencies (Qt6 + Poppler-Qt6 + OpenCV + Tesseract)
+#      - Upload built executable as workflow artifact
+#
+#  Notes:
+#      - Use ubuntu-22.04 explicitly because:
+#          * libpoppler-qt6-dev is reliably available there
+#          * stable dependency resolution
+# ============================================================
+
+name: Build Release (Linux)
 
 on:
   push:
@@ -10,27 +25,53 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+    # --------------------------------------------------------
+    # Checkout repository
+    # --------------------------------------------------------
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y \
-            cmake build-essential \
-            qt6-base-dev qt6-tools-dev \
-            qt6-multimedia-dev \
-            libpoppler-qt6-dev \
-            libopencv-dev
+    # --------------------------------------------------------
+    # Install system dependencies
+    # --------------------------------------------------------
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          ninja-build \
+          cmake \
+          pkg-config \
+          qt6-base-dev \
+          qt6-tools-dev \
+          qt6-multimedia-dev \
+          libpoppler-qt6-dev \
+          libopencv-dev \
+          libtesseract-dev \
+          libleptonica-dev
 
-      - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+    # --------------------------------------------------------
+    # Configure (Release)
+    # --------------------------------------------------------
+    - name: Configure
+      run: |
+        cmake -S . -B build \
+          -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
-        run: cmake --build build --config Release
+    # --------------------------------------------------------
+    # Build
+    # --------------------------------------------------------
+    - name: Build
+      run: |
+        cmake --build build
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: OCRtoODT-Linux
-          path: build/OCRtoODT
+    # --------------------------------------------------------
+    # Upload binary artifact
+    # --------------------------------------------------------
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OCRtoODT-Linux
+        path: build/OCRtoODT
 
