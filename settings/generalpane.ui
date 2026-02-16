@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GeneralSettingsPane</class>
+
+ <widget class="QWidget" name="GeneralSettingsPane">
+  <property name="windowTitle">
+   <string>General</string>
+  </property>
+
+  <layout class="QVBoxLayout" name="layoutRoot">
+
+   <!-- ===================================================== -->
+   <!-- Execution strategy (CPU usage)                        -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QGroupBox" name="grpProcessing">
+     <property name="title">
+      <string>Execution strategy</string>
+     </property>
+
+     <layout class="QGridLayout" name="layoutProcessingGrid">
+      <property name="horizontalSpacing">
+       <number>12</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>6</number>
+      </property>
+
+      <!-- ===================================================== -->
+      <!-- Buttons + icon row                                    -->
+      <!-- ===================================================== -->
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="layoutCpuRow">
+        <property name="spacing">
+         <number>12</number>
+        </property>
+
+        <!-- CPU buttons -->
+        <item>
+         <layout class="QHBoxLayout" name="layoutCpuButtons">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+
+          <item>
+           <widget class="QToolButton" name="btnCpuAuto">
+            <property name="text">
+             <string>Automatic</string>
+            </property>
+            <property name="toolTip">
+             <string>Automatic mode uses all available CPU cores.</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+
+          <item>
+           <widget class="QToolButton" name="btnSequential">
+            <property name="text">
+             <string>Sequential</string>
+            </property>
+            <property name="toolTip">
+             <string>Sequential mode uses a single CPU core and fewer resources.</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+
+        <!-- Spacer -->
+        <item>
+         <spacer>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>16</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+
+        <!-- Icon -->
+        <item>
+         <widget class="QLabel" name="lblCpuModeIcon">
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>128</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>200</width>
+            <height>128</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+
+      <!-- ===================================================== -->
+      <!-- Dynamic hint                                          -->
+      <!-- ===================================================== -->
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblProcessingHint">
+        <property name="styleSheet">
+         <string notr="true">color: #6b7280; font-size: 10pt;</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ===================================================== -->
+   <!-- Data execution mode (RAM / Disk)                      -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QGroupBox" name="grpDataMode">
+     <property name="title">
+      <string>Data execution mode</string>
+     </property>
+
+     <layout class="QGridLayout" name="layoutDataModeGrid">
+      <property name="horizontalSpacing">
+       <number>12</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>6</number>
+      </property>
+
+      <!-- ===================================================== -->
+      <!-- Buttons + icon row                                    -->
+      <!-- ===================================================== -->
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="layoutDataModeRow">
+        <property name="spacing">
+         <number>12</number>
+        </property>
+
+        <!-- Buttons -->
+        <item>
+         <layout class="QHBoxLayout" name="layoutDataModeButtons">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+
+          <item>
+           <widget class="QToolButton" name="btnDataAuto">
+            <property name="text">
+             <string>Automatic</string>
+            </property>
+            <property name="toolTip">
+             <string>Program automatically chooses the optimal data execution mode.</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+
+          <item>
+           <widget class="QToolButton" name="btnDataRam">
+            <property name="text">
+             <string>Memory only</string>
+            </property>
+            <property name="toolTip">
+             <string>All processing steps are executed strictly in memory.</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+
+          <item>
+           <widget class="QToolButton" name="btnDataDisk">
+            <property name="text">
+             <string>Disk assisted</string>
+            </property>
+            <property name="toolTip">
+             <string>Disk is used as primary data storage (recommended for large documents).</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+
+         </layout>
+        </item>
+
+        <!-- Spacer -->
+        <item>
+         <spacer>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>16</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+
+        <!-- Icon -->
+        <item>
+         <widget class="QLabel" name="lblDataModeIcon">
+          <property name="minimumSize">
+           <size>
+            <width>300</width>
+            <height>200</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>300</width>
+            <height>200</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+
+       </layout>
+      </item>
+
+      <!-- ===================================================== -->
+      <!-- Dynamic hint                                          -->
+      <!-- ===================================================== -->
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblDataModeHint">
+        <property name="styleSheet">
+         <string notr="true">color: #6b7280; font-size: 10pt;</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+
+   <!-- ===================================================== -->
+   <!-- Control level                                        -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QGroupBox" name="grpControlLevel">
+     <property name="title">
+      <string>Control level</string>
+     </property>
+
+     <layout class="QGridLayout" name="layoutControlLevelGrid">
+      <property name="horizontalSpacing">
+       <number>12</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>6</number>
+      </property>
+
+      <!-- ===================================================== -->
+      <!-- Buttons + icon row                                    -->
+      <!-- ===================================================== -->
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="layoutControlLevelRow">
+        <property name="spacing">
+         <number>12</number>
+        </property>
+
+        <!-- Buttons -->
+        <item>
+         <layout class="QHBoxLayout" name="layoutControlButtons">
+          <property name="spacing">
+           <number>12</number>
+          </property>
+
+          <item>
+           <widget class="QToolButton" name="btnModeStandard">
+            <property name="text">
+             <string>Standard</string>
+            </property>
+            <property name="toolTip">
+             <string>Recommended mode with safe default settings.</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+
+          <item>
+           <widget class="QToolButton" name="btnModePro">
+            <property name="text">
+             <string>Professional</string>
+            </property>
+            <property name="toolTip">
+             <string>Unlocks advanced settings for experienced users.</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="autoRaise">
+             <bool>false</bool>
+            </property>
+            <property name="minimumWidth">
+             <number>140</number>
+            </property>
+            <property name="minimumHeight">
+             <number>64</number>
+            </property>
+           </widget>
+          </item>
+
+         </layout>
+        </item>
+
+        <!-- Spacer -->
+        <item>
+         <spacer>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>16</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+
+        <!-- Icon -->
+        <item>
+         <widget class="QLabel" name="lblControlLevelIcon">
+          <property name="minimumSize">
+           <size>
+            <width>200</width>
+            <height>128</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>200</width>
+            <height>128</height>
+           </size>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+
+       </layout>
+      </item>
+
+      <!-- ===================================================== -->
+      <!-- Dynamic hint                                          -->
+      <!-- ===================================================== -->
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblControlLevelHint">
+        <property name="styleSheet">
+         <string notr="true">color: #6b7280; font-size: 10pt;</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+
+  </layout>
+ </widget>
+
+ <resources/>
+ <connections/>
+</ui>
+

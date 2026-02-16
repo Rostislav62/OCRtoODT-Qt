@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+     stroke="#0078D4" fill="none" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+  <!-- Scanner/camera frame -->
+  <path d="M4 7h6l1-2h2l1 2h6v10H4z"/>
+  <!-- "Document" to the right -->
+  <rect x="14" y="9" width="6" height="8"/>
+  <path d="M14 11h6"/>
+  <path d="M14 13h4"/>
+  <!-- Scan lines -->
+  <path d="M5 11h6"/>
+  <path d="M5 14h6"/>
+</svg>
+

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoggingPane</class>
+ <widget class="QWidget" name="LoggingPane">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>520</width>
+    <height>420</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Logging</string>
+  </property>
+
+  <layout class="QVBoxLayout" name="verticalLayout">
+
+   <!-- === Section: Logging Mode === -->
+   <item>
+    <widget class="QGroupBox" name="grpLoggingMode">
+     <property name="title">
+      <string>Logging Mode</string>
+     </property>
+     <layout class="QVBoxLayout" name="layoutMode">
+
+      <item>
+       <widget class="QCheckBox" name="chkEnableLogging">
+        <property name="text">
+         <string>Enable logging</string>
+        </property>
+       </widget>
+      </item>
+
+      <!-- Radio buttons representing 5 log-level modes -->
+      <item>
+       <widget class="QRadioButton" name="rbLogOff">
+        <property name="text">
+         <string>Off</string>
+        </property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QRadioButton" name="rbErrorsOnly">
+        <property name="text">
+         <string>Errors only</string>
+        </property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QRadioButton" name="rbWarningsAndErrors">
+        <property name="text">
+         <string>Warnings + Errors</string>
+        </property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QRadioButton" name="rbInfoWarningsErrors">
+        <property name="text">
+         <string>Info + Warnings + Errors</string>
+        </property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QRadioButton" name="rbVerbose">
+        <property name="text">
+         <string>Verbose (Debug + Performance)</string>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+   <!-- === Section: Output Channels === -->
+   <item>
+    <widget class="QGroupBox" name="grpOutputChannels">
+     <property name="title">
+      <string>Output Channels</string>
+     </property>
+     <layout class="QGridLayout" name="layoutOutput">
+
+      <item row="0" column="0">
+       <widget class="QCheckBox" name="chkGuiOutput">
+        <property name="text">
+         <string>Show log in GUI</string>
+        </property>
+       </widget>
+      </item>
+
+      <item row="1" column="0">
+       <widget class="QCheckBox" name="chkFileOutput">
+        <property name="text">
+         <string>Save log to file</string>
+        </property>
+       </widget>
+      </item>
+
+      <item row="2" column="0">
+       <widget class="QLabel" name="lblPath">
+        <property name="text">
+         <string>Log file path:</string>
+        </property>
+       </widget>
+      </item>
+
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="editFilePath"/>
+      </item>
+
+      <item row="2" column="2">
+       <widget class="QToolButton" name="btnBrowse">
+        <property name="text">
+         <string>...</string>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+   <item>
+    <spacer name="spacerBottom">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+
+  </layout>
+ </widget>
+
+ <resources/>
+ <connections/>
+</ui>

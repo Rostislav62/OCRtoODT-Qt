@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ============================================================
+     OCRtoODT — Dialog: OCR Completion
+     File: ui/OcrCompletionDialog.ui
+
+     Responsibility:
+         - Inform the user that OCR has completed successfully
+         - Explain how to start editing recognized text
+         - Display a visual demo (double-click illustration)
+
+     Notes:
+         - English is the ONLY source language
+         - All user-visible strings are translatable
+         - No OCR logic is implemented here
+============================================================ -->
+<ui version="4.0">
+ <class>OcrCompletionDialog</class>
+
+ <widget class="QDialog" name="OcrCompletionDialog">
+  <property name="windowTitle">
+   <string>OCR Completed</string>
+  </property>
+
+  <property name="minimumSize">
+   <size>
+    <width>640</width>
+    <height>430</height>
+   </size>
+  </property>
+
+  <layout class="QVBoxLayout" name="layoutMain">
+   <property name="spacing">
+    <number>14</number>
+   </property>
+
+   <!-- ===================================================== -->
+   <!-- Header                                                -->
+   <!-- ===================================================== -->
+   <item>
+    <layout class="QHBoxLayout" name="layoutHeader">
+     <property name="spacing">
+      <number>12</number>
+     </property>
+
+      <item>
+       <widget class="QLabel" name="lblIcon">
+        <property name="minimumSize">
+         <size>
+          <width>28</width>
+          <height>28</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>28</width>
+          <height>28</height>
+         </size>
+        </property>
+
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+
+        <property name="pixmap">
+         <pixmap resource="../resources/icons.qrc">:/icons/icons/check_circle.svg</pixmap>
+        </property>
+
+        <property name="scaledContents">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+
+
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="text">
+        <string>Text recognition completed</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">font-size: 14pt; font-weight: 600;</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <spacer name="spacerHeader">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+
+   <!-- ===================================================== -->
+   <!-- Main message                                          -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QLabel" name="lblMessage">
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+     <property name="text">
+      <string>Text recognition has been completed successfully.</string>
+     </property>
+    </widget>
+   </item>
+
+   <!-- ===================================================== -->
+   <!-- Demo block                                            -->
+   <!-- ===================================================== -->
+   <item>
+    <layout class="QVBoxLayout" name="layoutDemo">
+     <property name="spacing">
+      <number>8</number>
+     </property>
+
+     <item>
+      <widget class="QLabel" name="lblHowTo">
+       <property name="text">
+        <string>How to edit the text</string>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">font-weight: 600;</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <widget class="QLabel" name="lblHint">
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>Double-click on any text line in the OCR Result panel to start editing.</string>
+       </property>
+      </widget>
+     </item>
+
+     <!-- Demo illustration card -->
+     <item>
+      <widget class="QLabel" name="lblDemo">
+       <property name="minimumSize">
+        <size>
+         <width>520</width>
+         <height>180</height>
+        </size>
+       </property>
+       
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+
+
+       <property name="frameShadow">
+        <enum>QFrame::Plain</enum>
+       </property>
+
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+
+      <property name="styleSheet">
+       <string notr="true">
+      QLabel {
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 10px;
+          background-color: rgba(0, 0, 0, 0.14);
+          padding: 8px;
+      }
+       </string>
+      </property>
+
+
+      </widget>
+     </item>
+
+    </layout>
+   </item>
+
+   <!-- ===================================================== -->
+   <!-- Buttons                                              -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+
+ <resources>
+  <include location="../resources/icons.qrc"/>
+ </resources>
+
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>OcrCompletionDialog</receiver>
+   <slot>accept()</slot>
+  </connection>
+ </connections>
+</ui>
+

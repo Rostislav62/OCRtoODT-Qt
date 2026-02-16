@@ -1,0 +1,7 @@
+<svg width="24" height="24" viewBox="0 0 24 24"
+     xmlns="http://www.w3.org/2000/svg">
+ <rect x="6" y="3" width="12" height="18" fill="#fafafa"
+       stroke="#2563eb" stroke-width="1.5" />
+ <text x="12" y="22" font-size="6" text-anchor="middle"
+       fill="#2563eb">A4</text>
+</svg>

@@ -1,0 +1,60 @@
+<RCC>
+ <qresource prefix="/icons">
+  <!-- Core app icons -->
+  <file>icons/about.svg</file>
+  <file>icons/app_icon.svg</file>
+  <file>icons/clear.svg</file>
+  <file>icons/export.svg</file>
+  <file>icons/help.svg</file>
+  <file>icons/ocrtoodt.svg</file>
+  <file>icons/open.svg</file>
+  <file>icons/run.svg</file>
+  <file>icons/settings.svg</file>
+  <file>icons/stop.svg</file>
+
+  <!-- Text alignment -->
+  <file>icons/align_left.svg</file>
+  <file>icons/align_center.svg</file>
+  <file>icons/align_right.svg</file>
+  <file>icons/align_justify.svg</file>
+
+  <!-- Margins / rulers -->
+  <file>icons/margin_top.svg</file>
+  <file>icons/margin_bottom.svg</file>
+  <file>icons/margin_left.svg</file>
+  <file>icons/margin_right.svg</file>
+  <file>icons/ruler_h.svg</file>
+  <file>icons/ruler_v.svg</file>
+
+  <!-- Paper formats -->
+  <file>icons/paper_a4.svg</file>
+  <file>icons/paper_letter.svg</file>
+  <file>icons/paper_legal.svg</file>
+  
+  <!-- Export formats -->
+  <file>icons/export_txt.svg</file>
+  <file>icons/export_odt.svg</file>
+  <file>icons/export_docx.svg</file>
+  <file>icons/export_epub.svg</file>
+  <file>icons/export_fb2.svg</file>
+  <file>icons/export_mob.svg</file>
+  
+  <!-- Text recognition completed -->
+  <file>icons/double_click_demo_light.svg</file>
+  <file>icons/double_click_demo_dark.svg</file>
+  <file>icons/check_circle.svg</file>
+    
+   <!-- Paralel/Sequential -->
+  <file>icons/auto.png</file>
+  <file>icons/sequential.png</file>
+
+  <!-- Auto/Only RAM/Only disk -->
+  <file>icons/autopc.png</file>
+  <file>icons/ram.png</file>
+  <file>icons/disk.png</file>
+  <file>icons/standard.png</file>
+  <file>icons/pro.png</file>  
+  
+ </qresource>
+</RCC>
+

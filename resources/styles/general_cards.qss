@@ -1,0 +1,43 @@
+/* ============================================================
+   OCRtoODT — General Settings: Card-style buttons
+   File: resources/styles/general_cards.qss
+
+   Applies to:
+     - CPU selection buttons
+     - Control level buttons (Standard / Professional)
+
+   Mechanism:
+     Uses dynamic properties:
+       [card="true"]
+       [checked="true"]
+   ============================================================ */
+
+QToolButton[card="true"] {
+    background-color: rgba(255, 255, 255, 14);
+    border: 1px solid rgba(255, 255, 255, 35);
+    border-radius: 10px;
+    padding: 10px;
+    color: rgba(255, 255, 255, 235);
+}
+
+QToolButton[card="true"]:hover {
+    background-color: rgba(255, 255, 255, 22);
+    border-color: rgba(120, 180, 255, 170);
+}
+
+QToolButton[card="true"][checked="true"] {
+    background-color: rgba(30, 120, 255, 240);
+    border: 2px solid rgba(160, 210, 255, 255);
+    color: rgba(255, 255, 255, 255);
+}
+
+QToolButton[card="true"][checked="true"]:hover {
+    background-color: rgba(55, 145, 255, 255);
+    border-color: rgba(190, 225, 255, 255);
+}
+
+QToolButton[card="true"]:disabled {
+    background-color: rgba(255, 255, 255, 6);
+    border-color: rgba(255, 255, 255, 20);
+    color: rgba(255, 255, 255, 90);
+}

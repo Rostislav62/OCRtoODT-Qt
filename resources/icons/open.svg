@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+     stroke="#0078D4" fill="none" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+  <!-- Folder base -->
+  <path d="M3 9h18v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+  <!-- Folder flap -->
+  <path d="M3 9V6a2 2 0 0 1 2-2h4l2 2h9a2 2 0 0 1 2 2"/>
+  <!-- Arrow in -->
+  <path d="M12 10v6"/>
+  <path d="M9 13l3 3 3-3"/>
+</svg>
+

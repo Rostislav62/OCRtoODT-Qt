@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    File: ui/aboutdialog.ui
+
+    Purpose:
+        Application "About" dialog.
+
+    Localization notes:
+        - Rich text (<h2>, <p>, <a>) is fully translatable.
+        - Version string is user-visible and must be translated.
+-->
+<ui version="4.0">
+ <class>AboutDialog</class>
+ <widget class="QDialog" name="AboutDialog">
+  <property name="windowTitle">
+   <string>About OCRtoODT</string>
+  </property>
+
+  <layout class="QVBoxLayout">
+
+   <item>
+    <widget class="QLabel" name="lblTitle">
+     <property name="text">
+      <string>
+       &lt;h2&gt;OCRtoODT&lt;/h2&gt;
+       &lt;p&gt;GUI for OCR processing and ODT document assembly&lt;/p&gt;
+      </string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QLabel" name="lblVersion">
+     <property name="text">
+      <string>Version 0.3 (November 2025)</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QLabel" name="lblLink">
+     <property name="text">
+      <string>
+       &lt;a href="https://github.com/Rostislav62/OCRtoODT"&gt;
+       GitHub: OCRtoODT
+       &lt;/a&gt;
+      </string>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+</ui>
+

@@ -1,0 +1,11 @@
+<RCC>
+  <qresource prefix="/sample">
+    <file>sample/0001.png</file>
+    <file>sample/0002.png</file>
+    <file>sample/0003.png</file>
+    <file>sample/0001.txt</file>
+    <file>sample/0002.txt</file>
+    <file>sample/0003.txt</file>
+  </qresource>
+</RCC>
+

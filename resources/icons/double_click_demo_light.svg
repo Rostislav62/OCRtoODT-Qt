@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="640" height="220" viewBox="0 0 640 220"
+     xmlns="http://www.w3.org/2000/svg"
+     fill="none">
+
+  <!-- Background card (light neutral) -->
+  <rect x="10" y="10" width="620" height="200" rx="14"
+        fill="rgba(0,0,0,0.04)"
+        stroke="rgba(0,0,0,0.12)"
+        stroke-width="1.5"/>
+
+  <!-- Title -->
+  <text x="30" y="40"
+        font-family="Sans-serif"
+        font-size="14"
+        fill="#111827"
+        opacity="0.9">
+    OCR Result
+  </text>
+
+  <!-- Text lines -->
+  <rect x="30" y="60" width="360" height="14" rx="4" fill="#6b7280" opacity="0.6"/>
+  <rect x="30" y="82" width="320" height="14" rx="4" fill="#6b7280" opacity="0.45"/>
+
+  <!-- Highlighted line -->
+  <rect x="26" y="104" width="372" height="22" rx="6"
+        fill="#2563eb" opacity="0.45"/>
+  <rect x="30" y="108" width="300" height="14" rx="4"
+        fill="#111827" opacity="0.85"/>
+
+  <!-- Editing caret -->
+  <rect x="340" y="106" width="2" height="18" fill="#111827"/>
+
+  <!-- Other lines -->
+  <rect x="30" y="138" width="280" height="14" rx="4" fill="#6b7280" opacity="0.35"/>
+  <rect x="30" y="160" width="340" height="14" rx="4" fill="#6b7280" opacity="0.35"/>
+
+  <!-- Double click background (dark circular backing) -->
+  <circle cx="420" cy="112" r="18"
+          fill="#111827"
+          opacity="0.15"/>
+
+  <!-- Double click ripple -->
+  <circle cx="420" cy="112" r="10"
+          stroke="#ffffff"
+          stroke-width="2"
+          opacity="0.9"/>
+  <circle cx="420" cy="112" r="16"
+          stroke="#ffffff"
+          stroke-width="2"
+          opacity="0.6"/>
+
+  <!-- Mouse cursor (white with black outline) -->
+  <path d="M460 78 L460 132 L474 120 L484 140 L490 136 L480 116 L500 116 Z"
+        fill="#ffffff"
+        stroke="#111827"
+        stroke-width="1"
+        opacity="0.95"/>
+
+  <!-- Label -->
+  <text x="400" y="160"
+        font-family="Sans-serif"
+        font-size="12"
+        fill="#111827"
+        opacity="0.85">
+    double-click
+  </text>
+
+</svg>
+

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HelpDialog</class>
+ <widget class="QDialog" name="HelpDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>975</width>
+    <height>720</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>OCRtoODT Help</string>
+  </property>
+
+  <layout class="QVBoxLayout" name="verticalLayoutMain">
+
+   <!-- Header -->
+   <item>
+    <layout class="QHBoxLayout" name="layoutHeader">
+     <item>
+      <widget class="QLabel" name="lblLogo">
+       <property name="maximumSize">
+        <size>
+         <width>48</width>
+         <height>48</height>
+        </size>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lblTitle">
+       <property name="text">
+        <string>&lt;h2&gt;OCRtoODT — Documentation&lt;/h2&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <item>
+    <widget class="Line" name="lineHeader">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Content -->
+   <item>
+    <widget class="QTextBrowser" name="textBrowser">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Search -->
+   <item>
+    <layout class="QHBoxLayout" name="layoutSearch">
+     <item>
+      <widget class="QLabel" name="lblFind">
+       <property name="text">
+        <string>Find:</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <widget class="QLineEdit" name="editFind"/>
+     </item>
+
+     <item>
+      <widget class="QPushButton" name="btnPrev">
+       <property name="text">
+        <string>←</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <widget class="QPushButton" name="btnNext">
+       <property name="text">
+        <string>→</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <spacer>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </spacer>
+     </item>
+
+     <item>
+      <widget class="QLabel" name="lblStatus">
+       <property name="text">
+        <string>0 / 0</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignVCenter</set>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">color: #9ca3af; font-size: 9pt;</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+
+   <!-- Hint -->
+   <item>
+    <widget class="QLabel" name="lblHint">
+     <property name="styleSheet">
+      <string notr="true">color: #6b7280; font-size: 9pt;</string>
+     </property>
+     <property name="text">
+      <string>[!] Tip: use Ctrl+F to focus the search field</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+
+   <!-- Close -->
+   <item alignment="Qt::AlignRight">
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Close</set>
+     </property>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

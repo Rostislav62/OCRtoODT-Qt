@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ODTSettingsPane</class>
+
+ <widget class="QWidget" name="ODTSettingsPane">
+
+  <layout class="QHBoxLayout" name="layoutRoot">
+   <property name="spacing"><number>12</number></property>
+   <property name="leftMargin"><number>12</number></property>
+   <property name="topMargin"><number>12</number></property>
+   <property name="rightMargin"><number>12</number></property>
+   <property name="bottomMargin"><number>12</number></property>
+
+   <!-- ===================================================== -->
+   <!-- LEFT PANEL (Fixed Width Formatting Panel)            -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QWidget" name="leftPanel">
+     <property name="minimumWidth"><number>360</number></property>
+     <property name="maximumWidth"><number>420</number></property>
+
+     <layout class="QVBoxLayout">
+      <property name="spacing"><number>20</number></property>
+
+      <!-- ================================================= -->
+      <!-- Typography                                        -->
+      <!-- ================================================= -->
+      <item>
+       <widget class="QGroupBox" name="groupTypography">
+        <property name="title"><string>Typography</string></property>
+        <layout class="QFormLayout">
+
+         <item row="0" column="0">
+          <widget class="QLabel">
+           <property name="text"><string>Page size</string></property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="comboPaperSize">
+           <item><property name="text"><string>A4</string></property></item>
+           <item><property name="text"><string>Letter</string></property></item>
+           <item><property name="text"><string>Legal</string></property></item>
+          </widget>
+         </item>
+
+         <item row="1" column="0">
+          <widget class="QLabel">
+           <property name="text"><string>Font</string></property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QFontComboBox" name="comboFontFamily"/>
+         </item>
+
+         <item row="2" column="0">
+          <widget class="QLabel">
+           <property name="text"><string>Font size (pt)</string></property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="spinFontSizePt">
+           <property name="minimum"><number>6</number></property>
+           <property name="maximum"><number>72</number></property>
+           <property name="value"><number>12</number></property>
+          </widget>
+         </item>
+
+        </layout>
+       </widget>
+      </item>
+
+      <!-- ================================================= -->
+      <!-- Paragraph                                         -->
+      <!-- ================================================= -->
+      <item>
+       <widget class="QGroupBox" name="groupParagraph">
+        <property name="title"><string>Paragraph</string></property>
+        <layout class="QFormLayout">
+
+         <!-- Alignment -->
+         <item row="0" column="0">
+          <widget class="QLabel">
+           <property name="text"><string>Alignment</string></property>
+          </widget>
+         </item>
+
+         <item row="0" column="1">
+          <layout class="QHBoxLayout">
+           <property name="spacing"><number>6</number></property>
+
+           <item>
+            <widget class="QToolButton" name="btnAlignLeft">
+             <property name="icon">
+              <iconset>
+               <normaloff>:icons/icons/align_left.svg</normaloff>
+              </iconset>
+             </property>
+             <property name="iconSize">
+              <size><width>20</width><height>20</height></size>
+             </property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="autoExclusive"><bool>true</bool></property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QToolButton" name="btnAlignCenter">
+             <property name="icon">
+              <iconset>
+               <normaloff>:icons/icons/align_center.svg</normaloff>
+              </iconset>
+             </property>
+             <property name="iconSize">
+              <size><width>20</width><height>20</height></size>
+             </property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="autoExclusive"><bool>true</bool></property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QToolButton" name="btnAlignRight">
+             <property name="icon">
+              <iconset>
+               <normaloff>:icons/icons/align_right.svg</normaloff>
+              </iconset>
+             </property>
+             <property name="iconSize">
+              <size><width>20</width><height>20</height></size>
+             </property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="autoExclusive"><bool>true</bool></property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QToolButton" name="btnAlignJustify">
+             <property name="icon">
+              <iconset>
+               <normaloff>:icons/icons/align_justify.svg</normaloff>
+              </iconset>
+             </property>
+             <property name="iconSize">
+              <size><width>20</width><height>20</height></size>
+             </property>
+             <property name="checkable"><bool>true</bool></property>
+             <property name="autoExclusive"><bool>true</bool></property>
+            </widget>
+           </item>
+
+           <item>
+            <spacer>
+             <property name="orientation"><enum>Qt::Horizontal</enum></property>
+            </spacer>
+           </item>
+
+          </layout>
+         </item>
+
+         <!-- First line indent -->
+         <item row="1" column="0">
+          <widget class="QLabel">
+           <property name="text"><string>First line indent (mm)</string></property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="spinFirstLineIndent"/>
+         </item>
+
+         <!-- Paragraph spacing -->
+         <item row="2" column="0">
+          <widget class="QLabel">
+           <property name="text"><string>Spacing after</string></property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <layout class="QHBoxLayout">
+           <item>
+            <widget class="QComboBox" name="comboParagraphSpacing">
+             <item><property name="text"><string>0 pt</string></property></item>
+             <item><property name="text"><string>3 pt</string></property></item>
+             <item><property name="text"><string>6 pt</string></property></item>
+             <item><property name="text"><string>12 pt</string></property></item>
+             <item><property name="text"><string>Custom…</string></property></item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="spinParagraphSpacingCustom">
+             <property name="enabled"><bool>false</bool></property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+
+        </layout>
+       </widget>
+      </item>
+
+      <!-- ================================================= -->
+      <!-- Line Height                                       -->
+      <!-- ================================================= -->
+      <item>
+       <widget class="QGroupBox" name="groupLineHeight">
+        <property name="title"><string>Line spacing</string></property>
+        <layout class="QHBoxLayout">
+         <item>
+          <widget class="QComboBox" name="comboLineHeightPreset">
+           <item><property name="text"><string>Single</string></property></item>
+           <item><property name="text"><string>1.5</string></property></item>
+           <item><property name="text"><string>Double</string></property></item>
+           <item><property name="text"><string>Custom…</string></property></item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="spinLineHeightPercent">
+           <property name="minimum"><number>80</number></property>
+           <property name="maximum"><number>300</number></property>
+           <property name="suffix"><string> %</string></property>
+           <property name="enabled"><bool>false</bool></property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+
+      <!-- ================================================= -->
+      <!-- Page Layout                                       -->
+      <!-- ================================================= -->
+      <item>
+       <widget class="QGroupBox" name="groupLayout">
+        <property name="title"><string>Page layout</string></property>
+        <layout class="QFormLayout">
+
+         <item row="0" column="0"><widget class="QLabel"><property name="text"><string>Top margin</string></property></widget></item>
+         <item row="0" column="1"><widget class="QSpinBox" name="spinMarginTop"/></item>
+
+         <item row="1" column="0"><widget class="QLabel"><property name="text"><string>Bottom margin</string></property></widget></item>
+         <item row="1" column="1"><widget class="QSpinBox" name="spinMarginBottom"/></item>
+
+         <item row="2" column="0"><widget class="QLabel"><property name="text"><string>Left margin</string></property></widget></item>
+         <item row="2" column="1"><widget class="QSpinBox" name="spinMarginLeft"/></item>
+
+         <item row="3" column="0"><widget class="QLabel"><property name="text"><string>Right margin</string></property></widget></item>
+         <item row="3" column="1"><widget class="QSpinBox" name="spinMarginRight"/></item>
+
+         <item row="4" column="0"><widget class="QLabel"><property name="text"><string>Max empty lines</string></property></widget></item>
+         <item row="4" column="1"><widget class="QSpinBox" name="spinMaxEmpty"/></item>
+
+         <item row="5" column="1">
+          <widget class="QCheckBox" name="chkPageBreak">
+           <property name="text"><string>Insert page break between OCR pages</string></property>
+          </widget>
+         </item>
+
+        </layout>
+       </widget>
+      </item>
+
+      <item>
+       <spacer>
+        <property name="orientation"><enum>Qt::Vertical</enum></property>
+       </spacer>
+      </item>
+
+    <!-- ================================================= -->
+    <!-- Reset Defaults                                   -->
+    <!-- ================================================= -->
+    <item>
+     <layout class="QHBoxLayout">
+      <item>
+       <spacer>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </spacer>
+      </item>
+
+      <item>
+       <widget class="QPushButton" name="btnRestoreDefaults">
+        <property name="text">
+         <string>Restore defaults</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+
+
+     </layout>
+    </widget>
+   </item>
+
+   <!-- ===================================================== -->
+   <!-- RIGHT PANEL (Preview Expanding)                      -->
+   <!-- ===================================================== -->
+   <item>
+    <widget class="QFrame" name="framePreview">
+     <property name="frameShape"><enum>QFrame::StyledPanel</enum></property>
+     <layout class="QVBoxLayout">
+      <property name="leftMargin"><number>0</number></property>
+      <property name="topMargin"><number>0</number></property>
+      <property name="rightMargin"><number>0</number></property>
+      <property name="bottomMargin"><number>0</number></property>
+
+      <item>
+       <widget class="PageFrame" name="pageFrame">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding"/>
+        </property>
+       </widget>
+      </item>
+
+     </layout>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+
+ <customwidgets>
+  <customwidget>
+   <class>PageFrame</class>
+   <extends>QWidget</extends>
+   <header>pageframe.h</header>
+  </customwidget>
+ </customwidgets>
+</ui>
+

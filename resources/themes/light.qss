@@ -1,0 +1,148 @@
+/* ============================================================
+   OCRtoODT — LIGHT THEME (Token-based)
+   ------------------------------------------------------------
+   All colors and metrics defined via tokens.
+   These may be overridden per-theme or per-user.
+   ============================================================ */
+
+/* ==========================
+   TOKEN DEFINITIONS
+   ========================== */
+
+/* Backgrounds */
+@bg1:        #f7f7f7;     /* Full window background         */
+@bg2:        #ffffff;     /* Panels, inputs, text fields    */
+@panel:      #ffffff;
+
+/* Text */
+@text:       #202020;
+@textMuted:  #606060;
+
+/* Borders */
+@border:     #b0b0b0;
+
+/* Accents */
+@primary:    #2563EB;
+@accent:     #3B82F6;
+@danger:     #cc0000;
+
+/* Metrics */
+@radius:     4px;
+@padding:    4px;
+
+/* ============================================================
+   WIDGETS
+   ============================================================ */
+
+/* General widgets */
+QDialog,
+QWidget {
+    background-color: @bg1;
+    color: @text;
+}
+
+/* Labels */
+QLabel {
+    color: @text;
+}
+
+/* TextBrowser */
+QTextBrowser {
+    background-color: @bg2;
+    color: @text;
+    border: 1px solid @border;
+}
+
+/* Inputs */
+QLineEdit {
+    background-color: @bg2;
+    color: @text;
+    border: 1px solid @border;
+    border-radius: @radius;
+    padding: @padding;
+}
+
+QLineEdit[invalid="true"] {
+    border: 1px solid @danger;
+    background-color: #ffe5e5;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: #e6e6e6;
+    color: @text;
+    border: 1px solid @border;
+    border-radius: @radius;
+    padding: @padding @padding;
+}
+
+QPushButton:hover {
+    background-color: #dcdcdc;
+}
+
+QPushButton:pressed {
+    background-color: #c8c8c8;
+}
+
+/* Dialog OK/Cancel buttons */
+QDialogButtonBox QPushButton {
+    background-color: #e6e6e6;
+    color: @text;
+    border: 1px solid @border;
+    border-radius: @radius;
+    padding: @padding @padding * 2;
+}
+
+QDialogButtonBox QPushButton:hover {
+    background-color: #dcdcdc;
+}
+
+
+/* ============================================================
+   Preview zoom buttons ( + - Fit 100% )
+   ============================================================ */
+
+/* Контейнер не нужен — растягиваем сами кнопки */
+QPushButton#btnZoomIn,
+QPushButton#btnZoomOut,
+QPushButton#btnZoomFit,
+QPushButton#btnZoom100 {
+    min-height: 28px;
+    padding: 6px 0;
+}
+
+/* Равномерное растягивание по ширине */
+QPushButton#btnZoomIn,
+QPushButton#btnZoomOut,
+QPushButton#btnZoomFit,
+QPushButton#btnZoom100 {
+    qproperty-sizePolicy: Expanding Expanding;
+}
+
+/* ============================================================
+   Preview toolbar buttons
+   ============================================================ */
+
+QToolButton {
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    min-height: 28px;
+    min-width: 42px;   /* 28 * 1.5 ≈ 42 */
+}
+
+/* Hover */
+QToolButton:hover {
+    background-color: @accent;
+    border-radius: @radius;
+}
+
+/* Pressed */
+QToolButton:pressed {
+    background-color: @primary;
+}
+
+/* Disabled / unchecked state */
+QToolButton:!hover:!pressed {
+    background: transparent;
+}

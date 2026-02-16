@@ -1,0 +1,157 @@
+/* ============================================================
+   OCRtoODT — DARK THEME (Token-based)
+   ------------------------------------------------------------
+   All colors and metrics are controlled through theme tokens:
+       @bg1, @bg2, @text, @textMuted, @panel,
+       @border, @primary, @accent, @danger,
+       @radius, @padding
+   These are replaced dynamically by ThemeManager 2.0.
+   ------------------------------------------------------------
+   You can override any token here OR in config-based QSS.
+   Example:
+       @primary: #ff0000;
+   ============================================================ */
+
+/* ==========================
+   TOKEN DEFINITIONS
+   (optional, can override defaults from C++)
+   ========================== */
+
+/* Backgrounds */
+@bg1:        #1e1e1e;     /* Main window background        */
+@bg2:        #2c2c2c;     /* Inputs, buttons, secondary    */
+@panel:      #1e1e1e;     /* Panels, QDialog, etc.         */
+
+/* Text colors */
+@text:       #e0e0e0;     /* Main text                     */
+@textMuted:  #aaaaaa;     /* Secondary text                */
+
+/* Borders */
+@border:     #3a3a3a;
+
+/* Accents */
+@primary:    #3B82F6;     /* Primary brand color           */
+@accent:     #60A5FA;     /* Hover / active variant        */
+@danger:     #ff5555;     /* Error / invalid input         */
+
+/* Metrics */
+@radius:     4px;
+@padding:    4px;
+
+/* ============================================================
+   WIDGETS
+   ============================================================ */
+
+/* Base background for all general widgets */
+QDialog,
+QWidget {
+    background-color: @bg1;
+    color: @text;
+}
+
+/* Labels */
+QLabel {
+    color: @text;
+}
+
+/* Text browser / log viewer */
+QTextBrowser {
+    background-color: @bg1;
+    color: @text;
+    border: 1px solid @border;
+}
+
+/* LineEdits */
+QLineEdit {
+    background-color: @bg2;
+    color: @text;
+    border: 1px solid @border;
+    border-radius: @radius;
+    padding: @padding;
+}
+
+/* LineEdit for invalid path */
+QLineEdit[invalid="true"] {
+    border: 1px solid @danger;
+    background-color: #3a1e1e;
+}
+
+/* Buttons */
+QPushButton {
+    background-color: @bg2;
+    color: @text;
+    border: 1px solid @border;
+    border-radius: @radius;
+    padding: @padding @padding;
+}
+
+QPushButton:hover {
+    background-color: @accent;
+}
+
+QPushButton:pressed {
+    background-color: @primary;
+}
+
+/* Dialog button box (OK/Cancel) */
+QDialogButtonBox QPushButton {
+    background-color: @bg2;
+    color: @text;
+    border: 1px solid @border;
+    border-radius: @radius;
+    padding: @padding @padding * 2;
+}
+
+QDialogButtonBox QPushButton:hover {
+    background-color: @accent;
+}
+
+/* ============================================================
+   Preview zoom buttons ( + - Fit 100% )
+   ============================================================ */
+
+/* Контейнер не нужен — растягиваем сами кнопки */
+QPushButton#btnZoomIn,
+QPushButton#btnZoomOut,
+QPushButton#btnZoomFit,
+QPushButton#btnZoom100 {
+    min-height: 28px;
+    padding: 6px 0;
+}
+
+/* Равномерное растягивание по ширине */
+QPushButton#btnZoomIn,
+QPushButton#btnZoomOut,
+QPushButton#btnZoomFit,
+QPushButton#btnZoom100 {
+    qproperty-sizePolicy: Expanding Expanding;
+}
+
+/* ============================================================
+   Preview toolbar buttons
+   ============================================================ */
+
+QToolButton {
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    min-height: 28px;
+    min-width: 42px;   /* 28 * 1.5 ≈ 42 */
+}
+
+/* Hover */
+QToolButton:hover {
+    background-color: @accent;
+    border-radius: @radius;
+}
+
+/* Pressed */
+QToolButton:pressed {
+    background-color: @primary;
+}
+
+/* Disabled / unchecked state */
+QToolButton:!hover:!pressed {
+    background: transparent;
+}
+
