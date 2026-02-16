@@ -36,19 +36,19 @@ jobs:
     # --------------------------------------------------------
     - name: Install dependencies
       run: |
-        sudo apt update
-        sudo apt install -y \
-          build-essential \
-          ninja-build \
-          cmake \
-          pkg-config \
-          qt6-base-dev \
-          qt6-tools-dev \
-          qt6-multimedia-dev \
-          libpoppler-qt6-dev \
-          libopencv-dev \
-          libtesseract-dev \
-          libleptonica-dev
+       sudo apt update
+       sudo apt install -y \
+         build-essential \
+         cmake \
+         ninja-build \
+         pkg-config \
+         qt6-base-dev \
+         qt6-tools-dev \
+         qt6-multimedia-dev \
+         libpoppler-qt6-dev \
+         libopencv-dev \
+         libtesseract-dev \
+         libleptonica-dev
 
     # --------------------------------------------------------
     # Configure (Release)
