@@ -345,7 +345,7 @@ Modular, stage-aligned structure.
 
 ## **📦 Build (Generic)**
 
-git clone https://github.com/Rostislav62/OCRtoODT.git
+git clone https://github.com/Rostislav62/OCRtoODT-Qt
 
 cd OCRtoODT
 
