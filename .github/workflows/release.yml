@@ -18,8 +18,8 @@ jobs:
           sudo apt install -y \
             cmake build-essential \
             qt6-base-dev qt6-tools-dev \
+            qt6-multimedia-dev \
             libpoppler-qt6-dev \
-            libtesseract-dev \
             libopencv-dev
 
       - name: Configure
