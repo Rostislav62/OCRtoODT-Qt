@@ -14,7 +14,9 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(OCRtoODT LANGUAGES CXX)
+project(OCRtoODT VERSION 1.0.0 LANGUAGES CXX)
+
+add_compile_definitions(APP_VERSION="${PROJECT_VERSION}")
 
 # ------------------------------------------------------------
 # Compiler configuration

@@ -15,6 +15,7 @@
 
 #include "aboutdialog.h"
 #include "ui_aboutdialog.h"
+#include <QString>
 
 // ============================================================
 //  Constructor
@@ -24,6 +25,10 @@ AboutDialog::AboutDialog(QWidget* parent)
     , ui(new Ui::AboutDialog)
 {
     ui->setupUi(this);
+
+    ui->lblVersion->setText(
+        QString("Version %1").arg(QString::fromUtf8(APP_VERSION))
+        );
 
     // --------------------------------------------------------
     // ButtonBox wiring:

@@ -47,7 +47,7 @@
     <widget class="QLabel" name="lblLink">
      <property name="text">
       <string>
-       &lt;a href="https://github.com/Rostislav62/OCRtoODT"&gt;
+       &lt;a href="https://github.com/Rostislav62/OCRtoODT-Qt"&gt;
        GitHub: OCRtoODT
        &lt;/a&gt;
       </string>
