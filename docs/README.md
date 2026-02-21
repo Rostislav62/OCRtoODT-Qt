@@ -2,18 +2,6 @@
 
 ## **Structured OCR Extraction & Deterministic Processing Engine**
 
-<p align="center">
-  <img src="resources/sample/logo_placeholder.png" width="180"/>
-</p>
-
-<p align="center">
-  <img alt="C++17" src="https://img.shields.io/badge/C++-17-blue.svg"/>
-  <img alt="Qt 6" src="https://img.shields.io/badge/Qt-6-green.svg"/>
-  <img alt="Tesseract Embedded" src="https://img.shields.io/badge/OCR-Tesseract-informational"/>
-  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"/>
-  <img alt="Platform" src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey"/>
-</p>
-
 
 ## **📌 Overview**
 
@@ -32,7 +20,7 @@ It is a **deterministic, inspectable OCR data pipeline** designed for:
 
 - structured document processing
 
-- reproducible OCR experiments
+- reproducible OCR experimentsё
 
 The focus is on:
 

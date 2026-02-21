@@ -68,6 +68,7 @@ signals:
     // STEP 0 → UI sync
     void pageActivated(int globalIndex);
 
+    void inputStateChanged();
 
 public:
     explicit InputProcessor(QObject *parent = nullptr);

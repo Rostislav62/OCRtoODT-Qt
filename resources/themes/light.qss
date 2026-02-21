@@ -90,7 +90,7 @@ QDialogButtonBox QPushButton {
     color: @text;
     border: 1px solid @border;
     border-radius: @radius;
-    padding: @padding @padding * 2;
+    padding: @padding 8px;
 }
 
 QDialogButtonBox QPushButton:hover {

@@ -1,5 +1,14 @@
 <RCC>
- <qresource prefix="/docs">
-  <file alias="README.md">../docs/README.md</file>
- </qresource>
+  <qresource prefix="/docs">
+
+    <file alias="README.md">../docs/README.md</file>
+    <file alias="main_window.png">../docs/main_window.png</file>
+    <file alias="text_panel.png">../docs/text_panel.png</file>
+    <file alias="settings_general.png">../docs/settings_general.png</file>
+    <file alias="settings_recognition.png">../docs/settings_recognition.png</file>
+    <file alias="settings_odt.png">../docs/settings_odt.png</file>
+    <file alias="settings_interface.png">../docs/settings_interface.png</file>
+
+  </qresource>
 </RCC>
+

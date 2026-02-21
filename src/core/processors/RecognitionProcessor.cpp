@@ -28,12 +28,33 @@ RecognitionProcessor::RecognitionProcessor(QObject *parent)
 {
 
     ensureControllers();
+
+    m_watchdogTimer = new QTimer(this);
+    m_watchdogTimer->setSingleShot(true);
+
+    connect(m_watchdogTimer,
+            &QTimer::timeout,
+            this,
+            [this]()
+            {
+                LogRouter::instance().error(
+                    "[RecognitionProcessor] WATCHDOG TIMEOUT — forcing abort.");
+
+                // force-stop worker thread
+                if (m_ocrController)
+                    m_ocrController->shutdownAndWait();
+
+                finalizeOnce(FinalStatus::Timeout, tr("OCR timeout"));
+            });
+
 }
 
 RecognitionProcessor::~RecognitionProcessor()
 {
     clearOldLineTables();
 }
+
+
 
 // ============================================================
 // Controller setup
@@ -49,24 +70,11 @@ void RecognitionProcessor::ensureControllers()
     connect(m_ocrController, &Ocr::OcrPipelineController::ocrMessage,
             this, &RecognitionProcessor::ocrMessage);
 
-    connect(m_ocrController, &Ocr::OcrPipelineController::ocrFinished,
-            this, &RecognitionProcessor::ocrFinished);
-
     // OCR finished → receive VirtualPage[]
     connect(m_ocrController, &Ocr::OcrPipelineController::ocrCompleted,
             this, &RecognitionProcessor::onOcrCompletedFromOcr,
             Qt::QueuedConnection);
 
-    connect(m_ocrController,
-            &Ocr::OcrPipelineController::ocrCompleted,
-            this,
-            [this]()
-            {
-                if (!m_progressManager)
-                    return;
-
-                m_progressManager->advance(m_jobs.size());
-            });
 
     connect(m_ocrController,
             &Ocr::OcrPipelineController::ocrProgress,
@@ -89,6 +97,67 @@ void RecognitionProcessor::setProgressManager(Core::ProgressManager *pm)
     m_progressManager = pm;
 }
 
+void RecognitionProcessor::resetFinalizationState()
+{
+    m_finalized = false;
+
+    // Stage 5 hardening:
+    // Reset run-phase markers for the new run.
+    m_phase = RunPhase::Idle;
+    m_seenOcrCompleted = false;
+
+    // Reset progress delta tracking (defensive; Step2 will set it anyway).
+    m_lastOcrDone = 0;
+}
+
+
+void RecognitionProcessor::finalizeOnce(FinalStatus status, const QString &reason)
+{
+    // EXACTLY-ONCE barrier
+    // Prevent double-finalization from racing signals.
+    if (m_finalized)
+        return;
+
+    // If finalize is called without active processing,
+    // it means logic error or shutdown edge case.
+    if (!m_isProcessing && status != FinalStatus::Shutdown)
+    {
+        LogRouter::instance().warning(
+            "[RecognitionProcessor] finalizeOnce() called while not processing.");
+    }
+
+    m_finalized = true;
+
+    // stop watchdog
+    if (m_watchdogTimer && m_watchdogTimer->isActive())
+        m_watchdogTimer->stop();
+
+    // normalize processing flag
+    m_isProcessing = false;
+
+    // finalize progress
+    if (m_progressManager)
+    {
+        const bool ok = (status == FinalStatus::Success);
+
+        QString msg = reason;
+        if (msg.isEmpty())
+        {
+            switch (status)
+            {
+            case FinalStatus::Success:   msg = tr("OCR completed"); break;
+            case FinalStatus::Cancelled: msg = tr("Cancelled");     break;
+            case FinalStatus::Timeout:   msg = tr("OCR timeout");   break;
+            case FinalStatus::NoJobs:    msg = tr("No jobs");       break;
+            case FinalStatus::Shutdown:  msg = tr("Shutdown");      break;
+            }
+        }
+
+        m_progressManager->finishPipeline(ok, msg);
+    }
+
+    emit processingFinished();
+}
 
 // ============================================================
 // Cleanup helper
@@ -111,19 +180,56 @@ void RecognitionProcessor::clearOldLineTables()
 // ============================================================
 // Input
 // ============================================================
-
 void RecognitionProcessor::setJobs(const QVector<Ocr::Preprocess::PageJob> &jobs)
 {
+    // Defensive guard:
+    // Jobs cannot be replaced while processing is active.
+    // This prevents state corruption and undefined pipeline behaviour.
+    if (m_isProcessing)
+    {
+        LogRouter::instance().warning(
+            "[RecognitionProcessor] setJobs() ignored: processing active.");
+        return;
+    }
+
     m_jobs = jobs;
 }
 
 // ============================================================
 // Run STEP 2
+// CONTRACT:
+// - setJobs() must be called before run()
+// - run() may be called only when isProcessing() == false
+// - After clearSession(), jobs must be set again
 // ============================================================
 
 void RecognitionProcessor::run()
 {
+    if (m_isProcessing)
+    {
+        LogRouter::instance().warning(
+            "[RecognitionProcessor] run() ignored: already processing");
+        return;
+    }
+
+    // Defensive guard:
+    // Running without jobs is invalid state unless explicitly reconfigured.
+    // Prevent accidental re-run with stale state.
+    if (m_jobs.isEmpty())
+    {
+        LogRouter::instance().warning(
+            "[RecognitionProcessor] run() ignored: no jobs configured.");
+        return;
+    }
+
+    resetFinalizationState();
+
+    // Stage 5 hardening: entering STEP2 (OCR running)
+    m_phase = RunPhase::Step2_OcrRunning;
+
+    m_isProcessing = true;
     emit processingStarted();
+
     if (m_progressManager)
     {
         m_lastOcrDone = 0;
@@ -131,17 +237,18 @@ void RecognitionProcessor::run()
         m_progressManager->startStage(tr("OCR"), 0, 2, m_jobs.size());
     }
 
-    if (m_jobs.isEmpty())
-    {
-        LogRouter::instance().warning(
-            "[RecognitionProcessor] STEP 2 aborted: no jobs");
-        emit ocrFinished();
-        return;
-    }
 
     LogRouter::instance().info(
         QString("[RecognitionProcessor] STEP 2 start (jobs=%1)")
             .arg(m_jobs.size()));
+
+    // Start watchdog (timeout per batch)
+    const int timeoutSec =
+        ConfigManager::instance()
+            .get("general.ocr_timeout_sec", 600)
+            .toInt();
+
+    m_watchdogTimer->start(timeoutSec * 1000);
 
     m_ocrController->start(m_jobs);
 }
@@ -153,6 +260,30 @@ void RecognitionProcessor::run()
 void RecognitionProcessor::onOcrCompletedFromOcr(
     const QVector<Core::VirtualPage> &pages)
 {
+    LogRouter::instance().info(
+        QString("[RecognitionProcessor] onOcrCompletedFromOcr: pages=%1").arg(pages.size()));
+    if (!pages.isEmpty())
+    {
+        LogRouter::instance().info(
+            QString("[RecognitionProcessor] sample page0: idx=%1 success=%2 tsv=%3")
+                .arg(pages[0].globalIndex)
+                .arg(pages[0].ocrSuccess)
+                .arg(pages[0].ocrTsvText.size()));
+    }
+
+    // Defensive guard:
+    // Ignore late completion if already finalized (race safety).
+    if (m_finalized)
+        return;
+
+    // Stage 5 hardening:
+    // We have entered STEP3. From this point ocrFinished must NOT cancel the run.
+    m_phase = RunPhase::Step3_LineBuilding;
+    m_seenOcrCompleted = true;
+
+    if (m_watchdogTimer->isActive())
+        m_watchdogTimer->stop();
+
     LogRouter::instance().info(
         QString("[RecognitionProcessor] OCR completed (pages=%1)")
             .arg(pages.size()));
@@ -195,6 +326,9 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
 
     for (Core::VirtualPage &vp : m_pages)
     {
+        // Stage 5 hardening:
+        // Each page consumes exactly 1 progress unit in STEP3,
+        // even if skipped. This guarantees deterministic completion.
         if (m_progressManager)
             m_progressManager->advance(1);
 
@@ -237,9 +371,6 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
                 LogRouter::instance().info(
                     QString("[STEP 3] Loaded LineTable from disk page=%1")
                         .arg(vp.globalIndex));
-
-                if (m_progressManager)
-                    m_progressManager->advance(1);
                 continue;
             }
 
@@ -251,9 +382,6 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
         // Build in RAM
         vp.lineTable = Tsv::LineTextBuilder::build(vp, vp.ocrTsvText);
         ++built;
-
-        if (m_progressManager)
-            m_progressManager->advance(1);
 
         LogRouter::instance().info(
             QString("[STEP 3] Built LineTable in RAM page=%1 rows=%2")
@@ -286,29 +414,85 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
             .arg(loaded)
             .arg(saved));
 
-    if (m_progressManager)
-        m_progressManager->finishPipeline(true, tr("OCR completed"));
+    int withTable = 0;
+    for (const auto &vp : m_pages)
+        if (vp.lineTable) ++withTable;
 
-    emit processingFinished();
+    LogRouter::instance().info(
+        QString("[RecognitionProcessor] STEP3 done: pages=%1 withLineTable=%2")
+            .arg(m_pages.size())
+            .arg(withTable));
 
-    // IMPORTANT: emit pages owned by RecognitionProcessor
+    // Stage 5 hardening:
+    // Finalize FIRST (flip flags, finish progress), then publish results.
+    finalizeOnce(FinalStatus::Success, tr("OCR completed"));
+
     emit ocrCompleted(m_pages);
-
 }
 
 void RecognitionProcessor::cancel()
 {
+    if (!m_isProcessing)
+        return;
+
+    LogRouter::instance().info(
+        "[RecognitionProcessor] Cancel requested.");
+
+    // Stage 5 hardening:
+    // mark that we are no longer expecting success path from STEP2.
+    // (Finalization will happen via ocrFinished fallback if STEP2 is active.)
+
     if (m_ocrController)
         m_ocrController->cancel();
 
-    if (m_progressManager)
+    if (m_watchdogTimer->isActive())
+        m_watchdogTimer->stop();
+
+}
+
+void RecognitionProcessor::shutdownAndWait()
+{
+    if (!m_isProcessing)
+        return;
+
+    LogRouter::instance().info(
+        "[RecognitionProcessor] shutdownAndWait() invoked.");
+
+    if (m_ocrController)
     {
-        m_progressManager->finishPipeline(false, tr("Cancelled"));
-        m_progressManager->reset();   // 🔥 ДОБАВИТЬ
+        m_ocrController->shutdownAndWait();
     }
 
-    emit processingFinished();
+    finalizeOnce(FinalStatus::Shutdown, tr("Shutdown"));
 }
 
 
+// ============================================================
+// Full session reset (Clear button)
+// ============================================================
+void RecognitionProcessor::clearSession()
+{
+    // Stage 5 hardening:
+    // Session clear is not allowed during processing.
+    if (m_isProcessing)
+    {
+        LogRouter::instance().warning(
+            "[RecognitionProcessor] clearSession() ignored: processing active.");
+        return;
+    }
+    LogRouter::instance().info("[RecognitionProcessor] Clearing session");
+
+    // Free allocated LineTables from previous run
+    clearOldLineTables();
+
+    // Drop pages snapshot completely
+    m_pages.clear();
+
+    // Reset input job configuration.
+    // After clear, new jobs must be explicitly provided.
+    m_jobs.clear();
+
+    // Reset progress-related counters
+    m_lastOcrDone = 0;
+}
 

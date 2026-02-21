@@ -36,18 +36,32 @@ OcrPipelineWorker::OcrPipelineWorker(QObject *parent)
 // ------------------------------------------------------------
 // Start OCR pipeline (STEP 2)
 // ------------------------------------------------------------
-void OcrPipelineWorker::start(
-    const QVector<Ocr::Preprocess::PageJob> &jobs,
-    const QString &mode,
-    bool debugMode)
+void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
+                              const QString& mode,
+                              bool debug,
+                              const std::atomic_bool *cancelFlag)
 {
     m_jobs      = jobs;
     m_mode      = mode;
-    m_debugMode = debugMode;
+    m_debugMode = debug;
 
-    m_cancelRequested.store(false);
+    m_cancelFlag = cancelFlag;
+
+    // --------------------------------------------------------
+    // Defensive: never overlap futures.
+    // If a previous run is still finishing, request cancel and wait.
+    // --------------------------------------------------------
+    if (m_future.isRunning())
+    {
+        LogRouter::instance().warning(
+            "[OcrPipelineWorker] start() called while previous future is running. Cancelling previous run...");
+
+        m_future.cancel();
+        m_future.waitForFinished();
+    }
 
     const int total = m_jobs.size();
+
 
     if (total == 0)
     {
@@ -91,7 +105,7 @@ void OcrPipelineWorker::start(
         [this](const Ocr::Preprocess::PageJob &job) -> OcrPageResult
     {
         // Fast exit if cancelled before starting this job
-        if (m_cancelRequested.load())
+        if (m_cancelFlag && m_cancelFlag->load())
         {
             OcrPageResult r;
             r.globalIndex = job.globalIndex;
@@ -101,8 +115,9 @@ void OcrPipelineWorker::start(
         }
 
         // Cooperative cancel inside page worker too
-        return OcrPageWorker::run(job, &m_cancelRequested);
+        return OcrPageWorker::run(job, m_cancelFlag);
     };
+
 
 
     m_future = QtConcurrent::mapped(jobsByIndex, lambdaOcr);
@@ -185,7 +200,7 @@ void OcrPipelineWorker::start(
                 // If cancellation happened — do NOT treat as success.
                 // We only notify finish, but do NOT emit completed result.
                 // --------------------------------------------------------
-                if (future.isCanceled())
+                if ((m_cancelFlag && m_cancelFlag->load()) || future.isCanceled())
                 {
                     LogRouter::instance().warning(
                         QString("[OcrPipelineWorker] OCR finished in CANCELED state. produced=%1 total=%2 ok=%3 fail=%4")
@@ -224,12 +239,31 @@ void OcrPipelineWorker::cancel()
     // --------------------------------------------------------
     LogRouter::instance().warning("[OcrPipelineWorker] cancel() requested");
 
-    m_cancelRequested.store(true);
 
-    // QtConcurrent cancellation flag (cooperative, not immediate).
+    // NOTE:
+    // Cancel token is owned by Controller. We only cancel the future here.
+    // QtConcurrent cancellation is cooperative (not immediate).
     if (m_future.isRunning())
         m_future.cancel();
 
     emit ocrMessage(tr("Cancellation requested..."));
 }
 
+void OcrPipelineWorker::waitForFinished()
+{
+    // --------------------------------------------------------
+    // STEP 4.2 — Safe shutdown wait.
+    // QtConcurrent cancellation is cooperative; this call ensures
+    // all tasks have completed before object destruction.
+    // --------------------------------------------------------
+    if (m_future.isRunning())
+    {
+        LogRouter::instance().info(
+            "[OcrPipelineWorker] waitForFinished(): waiting for QtConcurrent future...");
+
+        m_future.waitForFinished();
+
+        LogRouter::instance().info(
+            "[OcrPipelineWorker] waitForFinished(): future finished.");
+    }
+}

@@ -22,6 +22,7 @@
 
 #include <QObject>
 #include <QVector>
+#include <QTimer>
 
 #include "1_preprocess/PageJob.h"
 
@@ -54,6 +55,19 @@ public:
 
     void cancel();
 
+    // --------------------------------------------------------
+    // Safe shutdown hook (blocking).
+    // Used ONLY during application shutdown.
+    // --------------------------------------------------------
+    void shutdownAndWait();
+
+    // --------------------------------------------------------
+    // Full session reset (used by MainWindow::Clear)
+    // --------------------------------------------------------
+    void clearSession();
+
+    bool isProcessing() const { return m_isProcessing; }
+
 signals:
     // STEP 2 status
     void ocrMessage(const QString &msg);
@@ -72,6 +86,34 @@ private slots:
     void onOcrCompletedFromOcr(const QVector<Core::VirtualPage> &pages);
 
 private:
+    enum class FinalStatus
+    {
+        Success,
+        Cancelled,
+        Timeout,
+        NoJobs,
+        Shutdown
+    };
+
+    void finalizeOnce(FinalStatus status, const QString &reason);
+    void resetFinalizationState();
+
+    bool m_finalized = false;
+
+    // Stage 5 hardening:
+    // Explicit run phase eliminates races between ocrFinished and ocrCompleted.
+    enum class RunPhase
+    {
+        Idle,
+        Step2_OcrRunning,
+        Step3_LineBuilding
+    };
+
+    RunPhase m_phase = RunPhase::Idle;
+
+    // Set when we entered Step3 (i.e., ocrCompleted arrived).
+    bool m_seenOcrCompleted = false;
+
     void ensureControllers();
     void clearOldLineTables();
 
@@ -82,5 +124,9 @@ private:
 
     int m_lastOcrDone = 0;
     Core::ProgressManager *m_progressManager = nullptr;
+
+    bool m_isProcessing = false;
+
+    QTimer *m_watchdogTimer = nullptr;
 
 };

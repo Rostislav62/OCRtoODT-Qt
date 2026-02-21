@@ -1,5 +1,6 @@
-# Build
+# Build directories
 build/
+cmake-build*/
 .qtcreator/
 CMakeFiles/
 CMakeCache.txt
@@ -7,9 +8,12 @@ cmake_install.cmake
 Makefile
 
 # Qt
-*.pro.user
 *.user
+*.pro.user
 *.qbs.user
+*.autosave
+*.qmlc
+*.jsc
 *.o
 *.obj
 
@@ -17,10 +21,27 @@ Makefile
 .idea/
 .vscode/
 
-# Runtime
-cache/
-
 # OS
 .DS_Store
 Thumbs.db
 
+# Logs
+*.log
+
+# Cache
+cache/
+
+# System
+*.swp
+*.DS_Store
+
+# Qt Creator
+*.creator
+*.creator.user
+*.pro.user
+
+# Runtime config (user-specific)
+.config/
+
+# AppImage build tools
+linuxdeploy*.AppImage

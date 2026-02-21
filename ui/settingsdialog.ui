@@ -46,12 +46,39 @@
      </item>
 
      <item>
+      <widget class="QPushButton" name="btnResetDefaults">
+       <property name="text">
+        <string>Reset to Defaults</string>
+       </property>
+      </widget>
+     </item>
+
+     <!-- Import configuration -->
+     <item>
+      <widget class="QPushButton" name="btnImportConfig">
+       <property name="text">
+        <string>Import</string>
+       </property>
+      </widget>
+     </item>
+
+     <!-- Export configuration -->
+     <item>
+      <widget class="QPushButton" name="btnExportConfig">
+       <property name="text">
+        <string>Export</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
       <widget class="QPushButton" name="btnCancel">
        <property name="text">
         <string>Cancel</string>
        </property>
       </widget>
      </item>
+
 
     </layout>
    </item>

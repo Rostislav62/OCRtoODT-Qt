@@ -50,15 +50,23 @@ public:
     //   mode       — "ram_only" | "disk_only"
     //   debugMode  — global debug switch
     // --------------------------------------------------------
-    void start(const QVector<Ocr::Preprocess::PageJob> &jobs,
-               const QString &mode,
-               bool debugMode);
+    void start(const QVector<Ocr::Preprocess::PageJob>& jobs,
+               const QString& mode,
+               bool debug,
+               const std::atomic_bool *cancelFlag);
+
 
 public slots:
     // --------------------------------------------------------
     // Stop OCR pipeline (runs in worker thread)
     // --------------------------------------------------------
     void cancel();
+
+    // --------------------------------------------------------
+    // Safe shutdown hook
+    // Blocks until QtConcurrent future finishes.
+    // --------------------------------------------------------
+    void waitForFinished();
 
 signals:
     // --------------------------------------------------------
@@ -81,11 +89,13 @@ private:
     QString m_mode;
     bool    m_debugMode = false;
 
-    // Cancel flag (cooperative)
-    std::atomic_bool m_cancelRequested{false};
 
     // Keep future so cancel() can call m_future.cancel()
     QFuture<OcrPageResult> m_future;
+
+    // Cancel token is owned by Controller; Worker only observes it.
+    const std::atomic_bool *m_cancelFlag = nullptr;
+
 };
 
 } // namespace Ocr

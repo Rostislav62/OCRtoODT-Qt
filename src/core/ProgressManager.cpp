@@ -125,6 +125,10 @@ void ProgressManager::finishPipeline(bool ok,
     emitProgress(finalText);
 
     emit pipelineFinished(ok, finalText);
+
+    // Stage 5 hardening:
+    // Prevent further advance() calls after pipeline finished.
+    m_totalStages = 0;
 }
 
 
@@ -227,7 +231,4 @@ void ProgressManager::reset()
 
     emit progressChanged(0, 100, tr("Ready"));
 }
-
-
-
 } // namespace Core

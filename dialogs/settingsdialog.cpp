@@ -2,20 +2,21 @@
 //  OCRtoODT — Settings Dialog
 //  File: dialogs/settingsdialog.cpp
 //
-//  Responsibility:
-//      Implementation of the central settings dialog.
+//  Implementation of central settings dialog.
 //
-//      This dialog:
-//          • creates and owns all settings panes
-//          • synchronizes panes with ConfigManager
-//          • applies runtime UI-related changes immediately
-//          • updates its own localization live
+//  Safe Runtime Integration:
+//      • RuntimePolicyManager::reapply() is called
+//        only when OCR is NOT running.
+//
 // ============================================================
-
-#include <QTabBar>
 
 #include "settingsdialog.h"
 #include "ui_settingsdialog.h"
+
+#include <QTabBar>
+#include <QMessageBox>
+#include <QFileDialog>
+#include <QDir>
 
 // ------------------------------------------------------------
 // Settings panes
@@ -34,6 +35,14 @@
 #include "core/ThemeManager.h"
 #include "core/LanguageManager.h"
 #include "core/LogRouter.h"
+#include "core/RuntimePolicyManager.h"
+
+// ------------------------------------------------------------
+// OCR controller (for safe runtime reapply check)
+// ------------------------------------------------------------
+#include "2_ocr/OcrPipeLineController.h"
+
+using namespace Ocr;
 
 // ============================================================
 // Constructor
@@ -54,7 +63,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
             &SettingsDialog::retranslate);
 
     // --------------------------------------------------------
-    // Create settings panes
+    // Create panes
     // --------------------------------------------------------
     m_general     = new GeneralSettingsPane(ui->tabWidget);
     m_recognition = new RecognitionSettingsPane(ui->tabWidget);
@@ -66,69 +75,65 @@ SettingsDialog::SettingsDialog(QWidget *parent)
             .get("ui.show_logging_tab", false)
             .toBool();
 
-    if (showLogging) {
+    if (showLogging)
         m_logging = new LoggingPane(ui->tabWidget);
-    } else {
-        m_logging = nullptr;
-    }
-
 
     const bool showPreprocess =
         ConfigManager::instance()
             .get("ui.show_preprocess_tab", false)
             .toBool();
 
-    if (showPreprocess) {
+    if (showPreprocess)
         m_preproc = new PreprocessSettingsPane(ui->tabWidget);
-    } else {
-        m_preproc = nullptr;
-    }
-
-
 
     // --------------------------------------------------------
-    // Add panes as tabs (titles are localized in retranslate())
+    // Add tabs
     // --------------------------------------------------------
     ui->tabWidget->addTab(m_general, QString());
 
-    if (m_preproc) {
+    if (m_preproc)
         ui->tabWidget->addTab(m_preproc, QString());
-    }
 
     ui->tabWidget->addTab(m_recognition, QString());
-    ui->tabWidget->addTab(m_odt,         QString());
-    ui->tabWidget->addTab(m_interface,   QString());
+    ui->tabWidget->addTab(m_odt, QString());
+    ui->tabWidget->addTab(m_interface, QString());
 
-    if (m_logging) {
+    if (m_logging)
         ui->tabWidget->addTab(m_logging, QString());
-    }
 
-    // Force tab bar visible (in case QSS hides it)
     ui->tabWidget->tabBar()->setVisible(true);
 
     // --------------------------------------------------------
-    // Load settings into panes
+    // Load configuration into panes
     // --------------------------------------------------------
     loadAll();
 
     // --------------------------------------------------------
-    // Buttons
+    // Button connections
     // --------------------------------------------------------
-    connect(ui->btnOK,     &QPushButton::clicked,
-            this,         &SettingsDialog::onOk);
+    connect(ui->btnOK, &QPushButton::clicked,
+            this, &SettingsDialog::onOk);
 
     connect(ui->btnCancel, &QPushButton::clicked,
-            this,          &SettingsDialog::onCancel);
+            this, &SettingsDialog::onCancel);
+
+    connect(ui->btnResetDefaults, &QPushButton::clicked,
+            this, &SettingsDialog::onResetToDefaults);
+
+    connect(ui->btnExportConfig, &QPushButton::clicked,
+            this, &SettingsDialog::onExportConfig);
+
+    connect(ui->btnImportConfig, &QPushButton::clicked,
+            this, &SettingsDialog::onImportConfig);
 
     // --------------------------------------------------------
-    // Apply UI-related changes live (theme, fonts, thumbnails)
+    // Live UI updates (theme preview)
     // --------------------------------------------------------
     connect(m_interface,
             &InterfaceSettingsPane::uiSettingsChanged,
             ThemeManager::instance(),
             &ThemeManager::reloadFromSettings);
 
-    // Apply initial localization
     retranslate();
 }
 
@@ -151,6 +156,8 @@ void SettingsDialog::retranslate()
 
     auto setTitle = [&](QWidget *pane, const QString &title)
     {
+        if (!pane) return;
+
         const int idx = ui->tabWidget->indexOf(pane);
         if (idx >= 0)
             ui->tabWidget->setTabText(idx, title);
@@ -170,16 +177,8 @@ void SettingsDialog::retranslate()
 
 void SettingsDialog::loadAll()
 {
-    if (m_general) m_general->load();
-
-    // Ensure preprocess pane reflects current expert mode
-    const bool expert = ConfigManager::instance().get("ui.expert_mode", false).toBool();
-
-    if (m_preproc) m_preproc->setExpertMode(expert);
-
-    const bool showPreprocess = ConfigManager::instance().get("ui.show_preprocess_tab", false).toBool();
-    if (showPreprocess ) {m_preproc->load();}
-
+    if (m_general)     m_general->load();
+    if (m_preproc)     m_preproc->load();
     if (m_recognition) m_recognition->load();
     if (m_odt)         m_odt->load();
     if (m_interface)   m_interface->load();
@@ -192,6 +191,8 @@ void SettingsDialog::loadAll()
 
 void SettingsDialog::saveAll()
 {
+    LogRouter::instance().debug("[SettingsDialog] saveAll()");
+
     if (m_general)     m_general->save();
     if (m_preproc)     m_preproc->save();
     if (m_recognition) m_recognition->save();
@@ -203,32 +204,123 @@ void SettingsDialog::saveAll()
 }
 
 // ============================================================
-// OK button handler
+// OK handler
 // ============================================================
 
 void SettingsDialog::onOk()
 {
-    // 1) Save UI state into config.yaml
     saveAll();
-
-    // 2) Reload configuration into memory
     ConfigManager::instance().reload();
 
     LogRouter::instance().info(
-        tr("[SettingsDialog] Settings applied and configuration reloaded"));
+        "[SettingsDialog] Settings applied and reloaded");
 
-    // 3) Apply UI-related settings immediately
     ThemeManager::instance()->applyAllFromConfig();
 
-    // 4) Close dialog
+    // Safe runtime reapply only when OCR idle
+    OcrPipelineController *ctrl =
+        OcrPipelineController::instance();
+
+    if (ctrl && !ctrl->isRunning())
+        RuntimePolicyManager::reapply();
+
     accept();
 }
 
 // ============================================================
-// Cancel button handler
+// Cancel
 // ============================================================
 
 void SettingsDialog::onCancel()
 {
     reject();
+}
+
+// ============================================================
+// Reset to defaults
+// ============================================================
+
+void SettingsDialog::onResetToDefaults()
+{
+    const auto reply = QMessageBox::warning(
+        this,
+        tr("Reset Configuration"),
+        tr("Reset all settings to defaults?"),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+
+    if (reply != QMessageBox::Yes)
+        return;
+
+    if (!ConfigManager::instance().resetToDefaults())
+    {
+        QMessageBox::critical(this,
+                              tr("Reset Failed"),
+                              tr("Failed to reset configuration."));
+        return;
+    }
+
+    loadAll();
+
+    QMessageBox::information(this,
+                             tr("Reset Complete"),
+                             tr("Configuration reset successfully."));
+}
+
+// ============================================================
+// Export config
+// ============================================================
+
+void SettingsDialog::onExportConfig()
+{
+    const QString path = QFileDialog::getSaveFileName(
+        this,
+        tr("Export configuration"),
+        QDir::homePath() + "/ocrtoodt_config.yaml",
+        tr("YAML files (*.yaml *.yml);;All files (*.*)"));
+
+    if (path.isEmpty())
+        return;
+
+    if (!ConfigManager::instance().exportToFile(path))
+    {
+        QMessageBox::critical(this,
+                              tr("Export failed"),
+                              tr("Failed to export configuration."));
+        return;
+    }
+
+    QMessageBox::information(this,
+                             tr("Export complete"),
+                             tr("Configuration exported."));
+}
+
+// ============================================================
+// Import config
+// ============================================================
+
+void SettingsDialog::onImportConfig()
+{
+    const QString path = QFileDialog::getOpenFileName(
+        this,
+        tr("Import configuration"),
+        QDir::homePath(),
+        tr("YAML files (*.yaml *.yml);;All files (*.*)"));
+
+    if (path.isEmpty())
+        return;
+
+    if (!ConfigManager::instance().importFromFile(path))
+    {
+        QMessageBox::critical(this,
+                              tr("Import failed"),
+                              tr("Invalid configuration file."));
+        return;
+    }
+
+    loadAll();
+
+    QMessageBox::information(this,
+                             tr("Import complete"),
+                             tr("Configuration imported."));
 }

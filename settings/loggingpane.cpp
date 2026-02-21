@@ -63,6 +63,14 @@ void LoggingPane::loadFromConfig()
     const int level =
         cfg.get("logging.level", 3).toInt();
 
+    const int maxSizeMB =
+        cfg.get("logging.max_file_size_mb", 5).toInt();
+
+    if (maxSizeMB == 1) ui->cmbMaxSize->setCurrentIndex(0);
+    else if (maxSizeMB == 2) ui->cmbMaxSize->setCurrentIndex(1);
+    else ui->cmbMaxSize->setCurrentIndex(2);
+
+
     ui->chkEnableLogging->setChecked(enabled);
     ui->chkGuiOutput->setChecked(guiOutput);
     ui->chkFileOutput->setChecked(fileOutput);
@@ -81,6 +89,20 @@ void LoggingPane::loadFromConfig()
 void LoggingPane::applyToConfig()
 {
     ConfigManager &cfg = ConfigManager::instance();
+
+    int maxSizeMB = 5;
+
+    switch (ui->cmbMaxSize->currentIndex())
+    {
+    case 0: maxSizeMB = 1; break;
+    case 1: maxSizeMB = 2; break;
+    case 2: maxSizeMB = 5; break;
+    default: maxSizeMB = 5; break;
+    }
+
+    cfg.set("logging.max_file_size_mb", maxSizeMB);
+
+
 
     const bool enabled      = ui->chkEnableLogging->isChecked();
     const bool guiOutput    = ui->chkGuiOutput->isChecked();
@@ -106,6 +128,8 @@ void LoggingPane::applyToConfig()
     LogRouter &log = LogRouter::instance();
 
     log.setLogLevel(level);
+    log.setMaxLogSizeMB(maxSizeMB);
+
 
     log.configure(
         enabled && guiOutput,      // UI output

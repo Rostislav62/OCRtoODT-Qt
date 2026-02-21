@@ -110,17 +110,23 @@ HelpDialog::~HelpDialog()
 // ============================================================
 void HelpDialog::loadMarkdown()
 {
+    qDebug() << "Resource exists?"
+             << QFile::exists(":/docs/README.md");
+
     QFile file(":/docs/README.md");
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         ui->textBrowser->setText("ERROR: Could not load README.md");
         return;
+
     }
 
     m_content = QString::fromUtf8(file.readAll());
     file.close();
 
+    ui->textBrowser->document()->setBaseUrl(QUrl("qrc:/docs/"));
     ui->textBrowser->setMarkdown(m_content);
+
 }
 
 // ============================================================

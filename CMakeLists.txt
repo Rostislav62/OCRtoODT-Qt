@@ -54,6 +54,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     Concurrent
     Multimedia
     LinguistTools
+    Svg
 )
 
 # ============================================================
@@ -434,6 +435,16 @@ add_executable(OCRtoODT
 
     ${UI_FILES}
     ${RESOURCE_FILES}
+    docs/README.md
+    resources/styles/general_cards.qss
+    docs/config_schema.md
+    src/core/CrashHandler.h
+    src/core/CrashHandler.cpp
+    src/core/runtime/CancelToken.h
+    src/core/ThreadPoolGuard.h
+    src/core/ThreadPoolGuard.cpp
+    src/core/RuntimePolicyManager.h
+    src/core/RuntimePolicyManager.cpp
 )
 
 # ============================================================
@@ -459,6 +470,7 @@ target_link_libraries(OCRtoODT PRIVATE
     Qt6::Widgets
     Qt6::Concurrent
     Qt6::Multimedia
+    Qt6::Svg
 
     PkgConfig::POPPLERQT6
     PkgConfig::TESSERACT
@@ -469,11 +481,14 @@ target_link_libraries(OCRtoODT PRIVATE
 # ============================================================
 # Translations (.ts -> .qm)
 # ============================================================
-qt_add_translations(OCRtoODT TS_FILES
-    resources/translations/ocrtoodt_ru.ts
-    resources/translations/ocrtoodt_en.ts
-    resources/translations/ocrtoodt_ro.ts
+qt_add_translations(OCRtoODT
+    TS_FILES
+        resources/translations/ocrtoodt_ru.ts
+        resources/translations/ocrtoodt_en.ts
+        resources/translations/ocrtoodt_ro.ts
+    RESOURCE_PREFIX "/translations"
 )
+
 
 # ============================================================
 # Diagnostics

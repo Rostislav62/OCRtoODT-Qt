@@ -158,6 +158,17 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
             return result;
         }
 
+        // --------------------------------------------------------
+        // Cancel check BEFORE disk read (heavy I/O)
+        // --------------------------------------------------------
+        if (cancelFlag && cancelFlag->load())
+        {
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] CANCELLED before disk load page=%1")
+                    .arg(job.globalIndex));
+            return result;
+        }
+
         gray = cv::imread(job.enhancedPath.toStdString(),
                           cv::IMREAD_GRAYSCALE);
 
@@ -186,7 +197,11 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         LogRouter::instance().info(
             QString("[OcrPageWorker] CANCELLED after image load page=%1")
                 .arg(job.globalIndex));
-        return result;
+        OcrPageResult r;
+        r.globalIndex = job.globalIndex;
+        r.success = false;
+        r.tsvText.clear();
+        return r;
     }
 
     // =========================================================
@@ -251,7 +266,29 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         pass.config.oem       = oem;
         pass.config.dpi       = dpi;
 
+        // --------------------------------------------------------
+        // Cancel check BEFORE TessBaseAPI init (heavy)
+        // --------------------------------------------------------
+        if (cancelFlag && cancelFlag->load())
+        {
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] CANCELLED before Tess init page=%1")
+                    .arg(job.globalIndex));
+            return result;
+        }
+
         tesseract::TessBaseAPI api;
+
+        // --------------------------------------------------------
+        // Cancel check BEFORE api.Init
+        // --------------------------------------------------------
+        if (cancelFlag && cancelFlag->load())
+        {
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] CANCELLED before api.Init page=%1")
+                    .arg(job.globalIndex));
+            return result;
+        }
 
         if (api.Init(nullptr,
                      languages.toUtf8().constData(),
@@ -266,11 +303,33 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         api.SetVariable("user_defined_dpi",
                         QByteArray::number(dpi).constData());
 
+        // --------------------------------------------------------
+        // Cancel check BEFORE SetImage
+        // --------------------------------------------------------
+        if (cancelFlag && cancelFlag->load())
+        {
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] CANCELLED before SetImage page=%1")
+                    .arg(job.globalIndex));
+            return result;
+        }
+
         api.SetImage(gray.data,
                      gray.cols,
                      gray.rows,
                      1,
                      static_cast<int>(gray.step));
+
+        // --------------------------------------------------------
+        // Cancel check BEFORE GetTSVText (very heavy call)
+        // --------------------------------------------------------
+        if (cancelFlag && cancelFlag->load())
+        {
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] CANCELLED before GetTSVText page=%1")
+                    .arg(job.globalIndex));
+            return result;
+        }
 
         char *raw = api.GetTSVText(0);
 
@@ -281,6 +340,18 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         delete [] raw;
 
         pass.tsvText = sanitizeTsvConf(tsvRaw);
+
+        // --------------------------------------------------------
+        // Cancel check BEFORE quality analysis
+        // --------------------------------------------------------
+        if (cancelFlag && cancelFlag->load())
+        {
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] CANCELLED before quality analysis page=%1")
+                    .arg(job.globalIndex));
+            return result;
+        }
+
         pass.quality = analyzeTsvQualityFromText(pass.tsvText);
 
         passResults << pass;

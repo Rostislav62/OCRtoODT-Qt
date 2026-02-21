@@ -3,18 +3,19 @@
 //  File: dialogs/settingsdialog.h
 //
 //  Responsibility:
-//      Central dialog that hosts all application settings panes.
+//      Central dialog hosting all application settings panes.
 //
-//      This dialog is responsible for:
-//          • creating and owning settings panes
-//          • loading settings from ConfigManager into panes
-//          • saving pane state back into ConfigManager
-//          • applying runtime-reloadable settings immediately
-//          • updating UI language live
+//      Responsibilities:
+//          • Creates and owns all settings panes
+//          • Synchronizes panes with ConfigManager
+//          • Applies UI-related changes immediately
+//          • Reapplies runtime policy safely (when OCR is idle)
 //
 //      This class does NOT:
-//          • contain business logic
-//          • perform validation unrelated to UI
+//          • Perform OCR logic
+//          • Modify worker threads directly
+//          • Access internal pipeline state
+//
 // ============================================================
 
 #ifndef SETTINGSDIALOG_H
@@ -22,7 +23,7 @@
 
 #include <QDialog>
 
-// Forward declarations of settings panes
+// Forward declarations of panes
 class GeneralSettingsPane;
 class PreprocessSettingsPane;
 class RecognitionSettingsPane;
@@ -43,20 +44,17 @@ public:
     ~SettingsDialog() override;
 
 public slots:
-    // Re-translate all user-visible texts in this dialog
     void retranslate();
-
-private slots:
-    // Apply settings and close dialog
     void onOk();
-
-    // Discard changes and close dialog
     void onCancel();
+    void onResetToDefaults();
+    void onExportConfig();
+    void onImportConfig();
 
 private:
     Ui::SettingsDialog *ui = nullptr;
 
-    // Modular settings panes (owned by dialog)
+    // Owned panes
     GeneralSettingsPane     *m_general     = nullptr;
     PreprocessSettingsPane  *m_preproc     = nullptr;
     RecognitionSettingsPane *m_recognition = nullptr;
@@ -64,11 +62,7 @@ private:
     InterfaceSettingsPane   *m_interface   = nullptr;
     LoggingPane             *m_logging     = nullptr;
 
-private:
-    // Load settings from ConfigManager into all panes
     void loadAll();
-
-    // Save all panes back into ConfigManager
     void saveAll();
 };
 

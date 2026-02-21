@@ -8,22 +8,18 @@
 //      High-level orchestrator controlling OCR pipeline:
 //          • Owns and manages OCR worker thread
 //          • Starts OCR asynchronously
-//          • Applies global OCR policy (RAM / DISK)
-//          • Forwards OCR-related signals to outer layers
+//          • Applies runtime policy before each RUN
+//          • Exposes running state
 //
-//      Input:
-//          • QVector<Ocr::Preprocess::PageJob>
-//            (results of STEP 1 preprocessing)
+//      Runtime Policy Integration:
+//          • RuntimePolicyManager::reapply() is called:
+//                - before each RUN
+//                - after safe shutdown
 //
-//      Output:
-//          • QVector<Core::VirtualPage> enriched with:
-//                - ocrSuccess
-//                - OCR result (RAM or disk, policy-driven)
-//
-//      IMPORTANT:
-//          • This controller is the ONLY place where
-//            general.mode / general.debug_mode are read for OCR.
-//          • OCR workers do NOT read config directly.
+//      Singleton Access:
+//          • instance() provides global access for
+//            SettingsDialog safety checks.
+//          • Exactly one controller exists per application.
 //
 // ============================================================
 
@@ -31,8 +27,8 @@
 #define OCR_PIPELINE_CONTROLLER_H
 
 #include <QObject>
-#include <QThread>
 #include <QVector>
+#include <atomic>
 
 #include "core/VirtualPage.h"
 #include "1_preprocess/PageJob.h"
@@ -49,35 +45,43 @@ public:
     ~OcrPipelineController() override;
 
     // --------------------------------------------------------
+    // Singleton accessor
+    // --------------------------------------------------------
+    static OcrPipelineController* instance();
+
+    // --------------------------------------------------------
     // Start OCR pipeline (asynchronous)
     // --------------------------------------------------------
     void start(const QVector<Ocr::Preprocess::PageJob> &jobs);
 
     void cancel();
 
+    // --------------------------------------------------------
+    // Safe shutdown hooks
+    // --------------------------------------------------------
+    bool isRunning() const;
+    void shutdownAndWait();
 
 signals:
-    // --------------------------------------------------------
-    // OCR runtime messages (logging / UI)
-    // --------------------------------------------------------
     void ocrMessage(QString msg);
-
-    // --------------------------------------------------------
-    // OCR finished (status-only signal)
-    // --------------------------------------------------------
     void ocrFinished();
-
-    // --------------------------------------------------------
-    // OCR completed (MAIN RESULT)
-    //
-    // Pages are returned with OCR results attached.
-    // --------------------------------------------------------
     void ocrCompleted(const QVector<Core::VirtualPage> &pages);
-
     void ocrProgress(int done, int total);
 
 private:
+    static OcrPipelineController* s_instance;
+
     OcrPipelineWorker *m_worker = nullptr;
+
+    std::atomic_bool m_cancelRequested{false};
+    std::atomic_bool m_isRunning{false};
+
+    // Stage 5 hardening:
+    // Idle notification must be EXACTLY-ONCE per run/shutdown path,
+    // otherwise RuntimePolicyManager may reapply policy twice.
+    std::atomic_bool m_idleNotified{false};
+
+    void notifyIdleOnce();
 };
 
 } // namespace Ocr

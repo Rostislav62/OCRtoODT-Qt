@@ -160,6 +160,11 @@ void EditLinesController::setActivePage(Core::VirtualPage *page)
             .arg(m_page->globalIndex)
             .arg(m_page->lineTable->rows.size()));
 
+    LogRouter::instance().info(
+        QString("[EditLinesController] setActivePage: vp=%1 lineTable=%2")
+            .arg(page ? page->globalIndex : -1)
+            .arg(page && page->lineTable ? "YES" : "NO"));
+
     // Ensure something is visible
     if (m_model->rowCount() > 0)
         selectRow(0, "page-switch");
@@ -178,6 +183,10 @@ void EditLinesController::clear()
 
     if (m_model)
         m_model->setLineTable(nullptr, -1);
+
+    // Also drop selection (prevents “sticky current index”)
+    if (m_list)
+        m_list->setCurrentIndex(QModelIndex());
 
     if (m_preview)
         m_preview->clearTextHighlight();

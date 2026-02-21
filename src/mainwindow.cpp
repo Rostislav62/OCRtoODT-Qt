@@ -15,6 +15,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QCloseEvent>
 
 
 // ------------------------------------------------------------
@@ -28,6 +29,7 @@
 #include "core/processors/InputProcessor.h"
 #include "core/processors/RecognitionProcessor.h"
 #include "core/ConfigManager.h"
+#include "core/LogRouter.h"
 
 // Preview rendering
 #include "0_input/PreviewController.h"
@@ -75,30 +77,6 @@ MainWindow::MainWindow(QWidget *parent)
                 ui->lblStatus->setText(text);
                 ui->lblOcrState->setVisible(true);
             });
-
-    connect(m_progressManager,
-            &Core::ProgressManager::pipelineFinished,
-            this,
-            [this](bool ok, const QString &text)
-            {
-                ui->progressTotal->setValue(
-                    ok ? ui->progressTotal->maximum() : 0);
-
-                ui->lblStatus->setText(text.isEmpty()
-                                           ? tr("Ready")
-                                           : text);
-                ui->lblOcrState->setVisible(false);
-                ui->actionRun->setEnabled(true);
-            });
-
-
-    connect(ui->actionStop,
-            &QAction::triggered,
-            this,
-            &MainWindow::on_actionStop_triggered);
-
-
-
 
 
     // --------------------------------------------------------
@@ -173,17 +151,18 @@ MainWindow::MainWindow(QWidget *parent)
     // --------------------------------------------------------
     m_recognitionProcessor = new RecognitionProcessor(this);
 
+    // --------------------------------------------------------
+    // Initial UI state
+    // --------------------------------------------------------
+    updateUiState();
+
     connect(m_recognitionProcessor,
             &RecognitionProcessor::processingStarted,
             this,
             [this]()
             {
-                ui->actionOpen->setEnabled(false);
-                ui->actionClear->setEnabled(false);
-                ui->actionExport->setEnabled(false);
-                ui->actionSettings->setEnabled(false);
-                ui->actionRun->setEnabled(false);
-                ui->actionStop->setEnabled(true);
+                updateUiState();
+
             });
 
     connect(m_recognitionProcessor,
@@ -191,12 +170,11 @@ MainWindow::MainWindow(QWidget *parent)
             this,
             [this]()
             {
-                ui->actionOpen->setEnabled(true);
-                ui->actionClear->setEnabled(true);
-                ui->actionExport->setEnabled(true);
-                ui->actionSettings->setEnabled(true);
-                ui->actionRun->setEnabled(true);
-                ui->actionStop->setEnabled(false);
+                updateUiState();
+
+                // 🔐 STEP 4.2 — if shutdown was requested,
+                // allow application to close now.
+                attemptShutdown();
             });
 
 
@@ -210,18 +188,23 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_progressManager,
             &Core::ProgressManager::pipelineFinished,
             this,
-            [this](bool ok, const QString &msg)
+            [this](bool ok, const QString &text)
             {
-                Q_UNUSED(ok);
+                ui->progressTotal->setValue(ok ? ui->progressTotal->maximum() : 0);
 
-                ui->progressTotal->setValue(ui->progressTotal->maximum());
-                ui->lblStatus->setText(msg.isEmpty()
-                                           ? tr("Ready")
-                                           : msg);
+                ui->lblStatus->setText(text.isEmpty() ? tr("Ready") : text);
+                ui->lblOcrState->setVisible(false);
 
-                ui->actionRun->setEnabled(true);
+                updateUiState();
             });
 
+    connect(m_inputProcessor,
+            &InputProcessor::inputStateChanged,
+            this,
+            [this]()
+            {
+                updateUiState();
+            });
 }
 
 MainWindow::~MainWindow()
@@ -238,9 +221,6 @@ void MainWindow::retranslate()
     // Update all texts generated from the .ui file
     ui->retranslateUi(this);
 
-    // NOTE:
-    // If manual texts (menus, dynamic labels, tooltips)
-    // are added in the future, they MUST be updated here.
 }
 
 // ============================================================
@@ -251,15 +231,23 @@ void MainWindow::retranslate()
 void MainWindow::on_actionOpen_triggered()
 {
     m_inputProcessor->run(this);
+
 }
 
 // Clear current session and reset UI
 void MainWindow::on_actionClear_triggered()
 {
-    m_inputProcessor->clearSession();
+    if (m_inputProcessor)
+        m_inputProcessor->clearSession();
+
+    if (m_recognitionProcessor)
+        m_recognitionProcessor->clearSession();
 
     if (m_editLinesController)
         m_editLinesController->clear();
+
+    if (m_previewController)
+        m_previewController->reset();
 
     if (m_progressManager)
         m_progressManager->reset();
@@ -268,24 +256,36 @@ void MainWindow::on_actionClear_triggered()
     ui->progressTotal->setMaximum(100);
     ui->lblOcrState->setVisible(false);
     ui->lblStatus->setText(tr("Ready"));
+
+    updateUiState();
 }
 
 
 // Start OCR processing
 void MainWindow::on_actionRun_triggered()
 {
-    ui->actionRun->setEnabled(false);
+    if (!m_inputProcessor || !m_recognitionProcessor)
+        return;
+
+    // Если уже идет OCR — игнор (защита от двойного RUN)
+    if (m_recognitionProcessor->isProcessing())
+        return;
 
     const auto jobs = m_inputProcessor->preprocessJobs();
 
+    // Нечего распознавать → просто сообщаем и выходим
     if (jobs.isEmpty())
     {
-        ui->progressTotal->setMaximum(0); // бесконечный режим
+        ui->lblStatus->setText(tr("No input loaded"));
+        updateUiState();
         return;
     }
 
+    // Стартуем OCR
     m_recognitionProcessor->setJobs(jobs);
     m_recognitionProcessor->run();
+
+    updateUiState();
 }
 
 // Export recognized pages
@@ -296,10 +296,16 @@ void MainWindow::on_actionExport_triggered()
 
     auto &pages = m_recognitionProcessor->pagesMutable();
     if (pages.isEmpty())
+    {
+        ui->lblStatus->setText(tr("Nothing to export"));
+        updateUiState();
         return;
+    }
 
     ExportDialog dlg(&pages, this);
     dlg.exec();
+
+    updateUiState();
 }
 
 // Open settings dialog
@@ -323,6 +329,23 @@ void MainWindow::on_actionHelp_triggered()
     dlg.exec();
 }
 
+void MainWindow::on_actionStop_triggered()
+{
+    if (!m_recognitionProcessor)
+        return;
+
+    if (!m_recognitionProcessor->isProcessing())
+    {
+        updateUiState();
+        return;
+    }
+
+    m_recognitionProcessor->cancel();
+
+    ui->lblStatus->setText(tr("Stopping OCR..."));
+    updateUiState();
+}
+
 // ============================================================
 // Processing lifecycle
 // ============================================================
@@ -330,12 +353,28 @@ void MainWindow::on_actionHelp_triggered()
 // Activate the first recognized page after OCR completes
 void MainWindow::onOcrCompleted(const QVector<Core::VirtualPage> &pages)
 {
+    updateUiState();
+
     Q_UNUSED(pages);
 
     if (!m_editLinesController || !m_recognitionProcessor)
         return;
 
+    LogRouter::instance().info(
+        QString("[MainWindow] onOcrCompleted signal received: pages param=%1").arg(pages.size()));
+
     auto &ownedPages = m_recognitionProcessor->pagesMutable();
+    LogRouter::instance().info(
+        QString("[MainWindow] ownedPages after recognition=%1").arg(ownedPages.size()));
+
+    if (!ownedPages.isEmpty())
+    {
+        LogRouter::instance().info(
+            QString("[MainWindow] owned page0: idx=%1 lineTable=%2")
+                .arg(ownedPages[0].globalIndex)
+                .arg(ownedPages[0].lineTable ? "YES" : "NO"));
+    }
+
     if (ownedPages.isEmpty())
         return;
 
@@ -356,6 +395,8 @@ void MainWindow::onOcrCompleted(const QVector<Core::VirtualPage> &pages)
         OcrCompletionDialog dlg(this);
         dlg.exec();
     }
+
+
 }
 
 
@@ -377,17 +418,120 @@ void MainWindow::onPageActivated(int globalIndex)
     m_editLinesController->setActivePage(&pages[globalIndex]);
 }
 
+// ============================================================
+// UI State Machine
+// ============================================================
 
-void MainWindow::on_actionStop_triggered()
+MainWindow::AppState MainWindow::computeState() const
 {
-    if (m_recognitionProcessor)
-        m_recognitionProcessor->cancel();
+    const bool isRunning =
+        m_recognitionProcessor &&
+        m_recognitionProcessor->isProcessing();
 
-    // UI: allow Run again
-    ui->actionRun->setEnabled(true);
+    const bool hasInput =
+        (ui->listFiles && ui->listFiles->model() && ui->listFiles->model()->rowCount() > 0);
 
-    ui->lblOcrState->setVisible(false);
-    ui->lblStatus->setText(tr("Ready"));
-    ui->progressTotal->setValue(0);
+    const bool hasResults =
+        m_recognitionProcessor &&
+        !m_recognitionProcessor->pagesMutable().isEmpty();
 
+    if (isRunning)
+        return AppState::Running;
+
+    if (!hasInput)
+        return AppState::IdleEmpty;
+
+    if (hasInput && !hasResults)
+        return AppState::Loaded;
+
+    return AppState::Completed;
+}
+
+void MainWindow::updateUiState()
+{
+    const AppState state = computeState();
+
+    switch (state)
+    {
+    case AppState::IdleEmpty:
+        ui->actionRun->setEnabled(false);
+        ui->actionClear->setEnabled(false);
+        ui->actionExport->setEnabled(false);
+        ui->actionStop->setEnabled(false);
+        break;
+
+    case AppState::Loaded:
+        ui->actionRun->setEnabled(true);
+        ui->actionClear->setEnabled(true);
+        ui->actionExport->setEnabled(false);
+        ui->actionStop->setEnabled(false);
+        break;
+
+    case AppState::Running:
+        ui->actionRun->setEnabled(false);
+        ui->actionClear->setEnabled(false);
+        ui->actionExport->setEnabled(false);
+        ui->actionStop->setEnabled(true);
+        break;
+
+    case AppState::Completed:
+        ui->actionRun->setEnabled(true);
+        ui->actionClear->setEnabled(true);
+        ui->actionExport->setEnabled(true);
+        ui->actionStop->setEnabled(false);
+        break;
+    }
+}
+
+
+// ============================================================
+// Safe shutdown (STEP 4.2)
+// ============================================================
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    // Если уже в процессе shutdown — пропускаем
+    if (m_shutdownRequested)
+    {
+        event->accept();
+        return;
+    }
+
+    // Если OCR не запущен — закрываем сразу
+    if (!m_recognitionProcessor)
+    {
+        event->accept();
+        return;
+    }
+
+    // Проверяем: идет ли обработка
+    // (processingFinished эмитится по завершению)
+    if (!m_recognitionProcessor->isProcessing())
+    {
+        // OCR не активен
+        event->accept();
+        return;
+    }
+
+    // OCR активен → инициируем безопасный shutdown
+    m_shutdownRequested = true;
+
+    ui->lblStatus->setText(tr("Stopping OCR..."));
+    ui->actionStop->setEnabled(false);
+
+    m_recognitionProcessor->cancel();
+
+    event->ignore();   // 🚫 Запрещаем закрытие до завершения
+}
+
+// ------------------------------------------------------------
+
+void MainWindow::attemptShutdown()
+{
+    if (!m_shutdownRequested)
+        return;
+
+    // Разрешаем закрытие после полного завершения pipeline
+    m_shutdownRequested = false;
+    close();
 }

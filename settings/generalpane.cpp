@@ -34,6 +34,7 @@
 
 #include "core/ConfigManager.h"
 #include "core/LanguageManager.h"
+#include "core/LogRouter.h" // CHANGED: unified logging via LogRouter
 
 
 #include <QStyle>
@@ -111,23 +112,8 @@ GeneralSettingsPane::GeneralSettingsPane(QWidget *parent)
     for (QToolButton *btn : cardButtons) {
         btn->setProperty("card", true);
 
-        connect(btn, &QToolButton::toggled, this, [btn](bool on) {
-            btn->setProperty("checked", on);
-            btn->style()->unpolish(btn);
-            btn->style()->polish(btn);
-            btn->update();
-        });
     }
 
-    // --------------------------------------------------------
-    // Apply initial checked-state properties
-    // --------------------------------------------------------
-    ui->btnCpuAuto->setProperty("checked", ui->btnCpuAuto->isChecked());
-    ui->btnSequential->setProperty("checked", ui->btnSequential->isChecked());
-    ui->btnCpuAuto->style()->unpolish(ui->btnCpuAuto);
-    ui->btnCpuAuto->style()->polish(ui->btnCpuAuto);
-    ui->btnSequential->style()->unpolish(ui->btnSequential);
-    ui->btnSequential->style()->polish(ui->btnSequential);
 
     // --------------------------------------------------------
     // Dynamic hint + icon (CPU mode)
@@ -290,6 +276,13 @@ void GeneralSettingsPane::load()
 // ============================================================
 void GeneralSettingsPane::save()
 {
+    LogRouter::instance().debug(
+        QString("[GeneralSettingsPane::save] btnCpuAuto=%1, btnSequential=%2")
+            .arg(ui->btnCpuAuto->isChecked())
+            .arg(ui->btnSequential->isChecked())
+        );
+    LogRouter::instance().debug("[GeneralSettingsPane] save() entered");
+
     ConfigManager &cfg = ConfigManager::instance();
 
     // --------------------------------------------------------

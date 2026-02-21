@@ -211,4 +211,26 @@ void PreviewController::clearTextHighlight()
         m_textHighlightItem->setVisible(false);
 }
 
+
+// ============================================================
+// Full reset of preview state
+// ============================================================
+void PreviewController::reset()
+{
+    m_currentPagePtr = nullptr;
+    m_originalImage  = QImage();
+
+    if (m_scene)
+        m_scene->clear();
+
+    m_item = nullptr;
+    m_textHighlightItem = nullptr;
+
+    m_currentScale = 1.0;
+    m_fitScale     = 1.0;
+
+    LogRouter::instance().info("[PreviewController] Reset");
+}
+
+
 } // namespace Input

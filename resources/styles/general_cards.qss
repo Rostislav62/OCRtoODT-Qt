@@ -25,13 +25,13 @@ QToolButton[card="true"]:hover {
     border-color: rgba(120, 180, 255, 170);
 }
 
-QToolButton[card="true"][checked="true"] {
+QToolButton[card="true"]:checked {
     background-color: rgba(30, 120, 255, 240);
     border: 2px solid rgba(160, 210, 255, 255);
     color: rgba(255, 255, 255, 255);
 }
 
-QToolButton[card="true"][checked="true"]:hover {
+QToolButton[card="true"]:checked:hover {
     background-color: rgba(55, 145, 255, 255);
     border-color: rgba(190, 225, 255, 255);
 }
@@ -41,3 +41,4 @@ QToolButton[card="true"]:disabled {
     border-color: rgba(255, 255, 255, 20);
     color: rgba(255, 255, 255, 90);
 }
+

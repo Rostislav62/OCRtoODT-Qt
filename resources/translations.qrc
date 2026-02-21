@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/translations">
+        <file>translations/ocrtoodt_en.qm</file>
+        <file>translations/ocrtoodt_ru.qm</file>
+        <file>translations/ocrtoodt_ro.qm</file>
+    </qresource>
+</RCC>
+

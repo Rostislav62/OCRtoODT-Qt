@@ -41,6 +41,9 @@ class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
@@ -53,7 +56,6 @@ public slots:
     // Re-translate all user-visible texts in the main window
     void retranslate();
 
-private slots:
     // --------------------------------------------------------
     // Menu and toolbar actions
     // --------------------------------------------------------
@@ -97,7 +99,22 @@ private slots:
 
 
 private:
+
     Ui::MainWindow *ui = nullptr;
+
+    enum class AppState
+    {
+        IdleEmpty,
+        Loaded,
+        Running,
+        Completed
+    };
+
+    AppState computeState() const;
+    void updateUiState();
+    void attemptShutdown();
+
+    bool m_shutdownRequested = false;
 
     // Visual-only controller responsible for preview rendering
     Input::PreviewController *m_previewController = nullptr;

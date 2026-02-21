@@ -131,6 +131,7 @@ void InputProcessor::wire()
                 }
 
                 startStep1Polling();
+                emit inputStateChanged();
             });
 
     // STEP 0 → preview
@@ -176,6 +177,18 @@ void InputProcessor::wire()
 // ============================================================
 void InputProcessor::run(QWidget *parentWidget)
 {
+    if (m_step1Running)
+    {
+        LogRouter::instance().warning("[InputProcessor] run() ignored: STEP1 running");
+        return;
+    }
+
+    if (m_step1PollTimer && m_step1PollTimer->isActive())
+    {
+        LogRouter::instance().warning("[InputProcessor] run() ignored: STEP0 in progress");
+        return;
+    }
+
     ConfigManager &cfg = ConfigManager::instance();
     m_showFinalPreview =
         cfg.get("preprocess.show_final_preview", true).toBool();
@@ -378,6 +391,8 @@ void InputProcessor::clearSession()
         cacheDir.removeRecursively();
         LogRouter::instance().info("[InputProcessor] cache/ removed");
     }
+
+    emit inputStateChanged();
 }
 
 

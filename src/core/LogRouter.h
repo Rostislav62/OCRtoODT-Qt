@@ -68,6 +68,12 @@ public:
     void error(const QString &msg);
     void perf(const QString &msg);
     void debug(const QString &msg);
+    // ------------------------------------------------------------
+    // Set maximum log file size (MB)
+    // Called from LoggingPane + config load
+    // ------------------------------------------------------------
+    void setMaxLogSizeMB(int megabytes);
+
 
 signals:
     // Emitted only when UI logging is enabled
@@ -89,10 +95,22 @@ private:
 
     bool shouldShow(Level msgLevel) const;
 
+    // --------------------------------------------------------
+    // File output helpers
+    //
+    // Contract:
+    //   - Rotation is checked BEFORE appending a new line.
+    //   - Rotation policy keeps:
+    //       <log>.1, <log>.2, <log>.3
+    // --------------------------------------------------------
     void writeToFile(const QString &msg);
+    void rotateIfNeeded_unlocked(qint64 incomingBytes);
+    void rotateLogs_unlocked();
+
     void writeToConsole(const QString &msg);
 
-private:
+
+
     QMutex      m_mutex;
     QFile       m_logFile;
     QTextStream m_stream;
@@ -105,6 +123,15 @@ private:
     Destination m_destination = Destination::UiOnly;
 
     int m_logLevel = 3; // default: Info
+
+    // ------------------------------------------------------------
+    // Log rotation threshold (bytes)
+    // Runtime-configurable (via config.yaml)
+    // Default = 5 MB
+    // ------------------------------------------------------------
+    qint64 m_maxLogSizeBytes = 5 * 1024 * 1024;
+
+
 };
 
 #endif // OCRTOODT_LOGROUTER_H

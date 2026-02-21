@@ -7,10 +7,6 @@
 #      - Use SYSTEM dependencies (Qt6 + Poppler-Qt6 + OpenCV + Tesseract)
 #      - Upload built executable as workflow artifact
 #
-#  Notes:
-#      - Use ubuntu-22.04 explicitly because:
-#          * libpoppler-qt6-dev is reliably available there
-#          * stable dependency resolution
 # ============================================================
 
 name: Build AppImage Release
@@ -94,6 +90,7 @@ jobs:
             --desktop-file AppDir/usr/share/applications/OCRtoODT.desktop \
             --icon-file resources/icons/ocrtoodt.png \
             --plugin qt \
+            --extra-plugins=imageformats,iconengines,platforms \
             --output appimage
 
       # ------------------------------------------------------------

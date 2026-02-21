@@ -3,15 +3,8 @@
 #  Location: ./config.yaml
 #  All paths are absolute and correspond to the self-contained installation.
 # ============================================================
-
-
-program_root: /home/ro/PycharmProjects/OCRtoODT/ # Programm root Folder
-# --- General input/output directories ---
-
-
-mode: development
-base_dir: /home/ro/C++Projects/OCRtoODT/
-
+config:
+  version: 1
 
 general:
   # Directory where input images or PDFs are copied on import
@@ -29,7 +22,7 @@ general:
   # Global debug switch:
   # When true, intermediate results of all steps may be written to disk
   # for inspection and troubleshooting.     true
-  debug_mode: false
+  debug_mode: true
 
   # Enable parallel execution if system supports it
   parallel_enabled: true
@@ -43,18 +36,23 @@ general:
   # - ram_only  : all steps work strictly in memory
   # - disk_only : disk is used as primary data source (debug / low-RAM systems)
   # - auto : прогоамма решает какой mode булет в зависимости от количества свободной памяти.
-  mode: auto
+  mode: ram_only
 
 
 
 
 logging:
-  level: 3 # Logging 1.ERROR only, 2.WARNING + ERROR, 3.INFO + WARNING + ERROR, 4.Verbose(DEBUG + Performance)
-  file_path: ocrtoodt.log # Detailed OCR pipeline log
+  level: 3  # Logging 1.ERROR only, 2.WARNING + ERROR, 3.INFO + WARNING + ERROR, 4.Verbose(DEBUG + Performance)
+  file_path: ocrtoodt.log  # Detailed OCR pipeline log
   file_output: false
   gui_output: true
   enabled: true
   console_output: true
+
+  # Maximum log file size before rotation (MB)
+  # Allowed values: 1, 2, 5
+  max_file_size_mb: 5
+
 
 
 # Thread settings for UI-related async work:
@@ -71,121 +69,112 @@ threading:
   auto: true                # true → ignore numbers above, calculate automatically   false
 
 
-
-
-
 # ============================================================
-#  IMAGE PREPROCESSING CONFIGURATION
-#  This section controls ALL image preprocessing before OCR.
-#
-#  Key principle:
-#  - Every filter can be ENABLED or DISABLED
-#  - Every filter has TUNABLE parameters
-#  - Four independent profiles exist
+#  IMAGE PREPROCESSING CONFIGURATION (CANONICAL STRUCTURE v2)
+# ============================================================
+#  IMPORTANT:
+#  - All profiles MUST contain identical key structure.
+#  - Even if filter is disabled, all parameters must exist.
+#  - This guarantees deterministic runtime behavior.
+#  - Production mode requires every key to exist explicitly.
 # ============================================================
 
 preprocess:
 
   # ----------------------------------------------------------
   # Active preprocessing profile
+  # ----------------------------------------------------------
+  # Determines which profile under "profiles" is used.
   #
   # Possible values:
-  #   - mobile       : camera photos (shadows, uneven lighting)
-  #   - scanner      : clean scanner images (minimal processing)
-  #   - low_quality  : blurry / noisy / small images
-  #   - pdf_auto     : automatic selection (future)
+  #   mobile       → phone photos (shadows, uneven lighting)
+  #   scanner      → clean flatbed scans
+  #   low_quality  → noisy / blurred sources
+  #   pdf_auto     → PDF raster pipeline
   # ----------------------------------------------------------
-  profile: pdf_auto     # пакет инструментов для обработки изображений из разных истоычников.
+  profile: pdf_auto
 
 
   # ----------------------------------------------------------
-  # PROFILE DEFINITIONS
-  # Each profile defines its OWN filter chain and parameters
+  # PROFILE DEFINITIONS (UNIFIED STRUCTURE)
   # ----------------------------------------------------------
-
   profiles:
 
     # ========================================================
-    # PROFILE: MOBILE (photos from phone)
+    # PROFILE: MOBILE (camera photos)
     # ========================================================
     mobile:
 
-      # --- Shadow removal (strong, dangerous filter)
+      # --- SHADOW REMOVAL ----------------------------------
+      # Removes large uneven lighting areas.
+      # Uses morphological closing.
       shadow_removal:
-        enabled: true
-        # Morphology kernel size (odd number)
-        # Range: 15 – 101
-        # Larger value = stronger shadow suppression
-        # Too large value may remove thin letters
-        morph_kernel: 31
+        enabled: true              # true → apply filter
+        morph_kernel: 31           # odd number (15–101)
+                                      # Larger → stronger shadow suppression
 
-      # --- Background normalization
+      # --- BACKGROUND NORMALIZATION -------------------------
+      # Divides image by blurred background to flatten lighting.
       background_normalization:
         enabled: true
-        # Epsilon to avoid division by zero
-        # Range: 0.0001 – 1.0
-        epsilon: 0.001
+        blur_ksize: 101            # odd, large = smooth background model
+        epsilon: 0.001             # small constant to avoid division by zero
 
-      # --- Gaussian blur (noise reduction)
+      # --- GAUSSIAN BLUR -----------------------------------
+      # Reduces noise before thresholding.
       gaussian_blur:
         enabled: true
-        # Kernel size (odd number)
-        # Range: 3 – 21
-        kernel_size: 5
-        # Sigma value
-        # Range: 0.1 – 5.0
-        sigma: 1.0
+        kernel_size: 5             # odd (3–21)
+        sigma: 1.0                 # blur intensity
 
-      # --- CLAHE (local contrast enhancement)
+      # --- CLAHE -------------------------------------------
+      # Local contrast enhancement.
       clahe:
         enabled: true
-        # Clip limit
-        # Range: 1.0 – 10.0
-        clip_limit: 2.0
-        # Tile grid size
-        # Range: 4 – 16
-        tile_grid_size: 8
+        clip_limit: 2.0            # contrast cap (1–10)
+        tile_grid_size: 8          # local region size (4–16)
 
-      # --- Sharpen (VERY DANGEROUS for OCR)
+      # --- SHARPEN -----------------------------------------
+      # Increases edge contrast.
+      # DANGEROUS: can harm OCR if too strong.
       sharpen:
         enabled: true
-        # Strength multiplier
-        # Range: 0.1 – 2.0
-        strength: 0.5
+        strength: 0.5              # multiplier (0.1–2.0)
+        gaussian_ksize: 3          # kernel for internal blur
+        gaussian_sigma: 1.0        # sigma for internal blur
 
-      # --- Adaptive threshold (binarization)
+      # --- ADAPTIVE THRESHOLD ------------------------------
+      # Binarization using local mean.
       adaptive_threshold:
         enabled: true
-        # Block size (odd number)
-        # Range: 11 – 101
-        block_size: 31
-        # Constant subtracted from mean
-        # Range: -20 – 20
-        C: 5
+        block_size: 31             # odd window size (11–101)
+        C: 5                       # subtraction constant (-20–20)
 
+      # --- SAUVOLA THRESHOLD -------------------------------
+      # Advanced adaptive thresholding.
       sauvola:
         enabled: false
-        window_size: 31   # odd, 15–101
-        k: 0.34           # 0.1–0.6
-        R: 128            # 64–128
+        window_size: 31            # odd (15–101)
+        k: 0.34                    # 0.1–0.6
+        R: 128                     # dynamic range constant
 
 
     # ========================================================
-    # PROFILE: SCANNER (clean scans, RECOMMENDED DEFAULT)
+    # PROFILE: SCANNER (clean scans)
     # ========================================================
     scanner:
 
       shadow_removal:
         enabled: false
+        morph_kernel: 31
 
       background_normalization:
         enabled: true
-        blur_ksize: 101    # большой радиус = медленное изменение фона
+        blur_ksize: 101
         epsilon: 0.01
 
       gaussian_blur:
         enabled: true
-        # Minimal blur to suppress scanner noise
         kernel_size: 3
         sigma: 0.5
 
@@ -197,6 +186,8 @@ preprocess:
       sharpen:
         enabled: false
         strength: 0.8
+        gaussian_ksize: 3
+        gaussian_sigma: 1.0
 
       adaptive_threshold:
         enabled: false
@@ -205,20 +196,23 @@ preprocess:
 
       sauvola:
         enabled: false
-        window_size: 31   # odd, 15–101
-        k: 0.34           # 0.1–0.6
-        R: 128            # 64–128
+        window_size: 31
+        k: 0.34
+        R: 128
+
 
     # ========================================================
-    # PROFILE: LOW QUALITY (old books, blurry images)
+    # PROFILE: LOW QUALITY (old books, noisy scans)
     # ========================================================
     low_quality:
 
       shadow_removal:
         enabled: false
+        morph_kernel: 31
 
       background_normalization:
         enabled: true
+        blur_ksize: 101
         epsilon: 0.001
 
       gaussian_blur:
@@ -233,31 +227,35 @@ preprocess:
 
       sharpen:
         enabled: true
-        # Be very careful here
         strength: 0.3
+        gaussian_ksize: 3
+        gaussian_sigma: 1.0
 
       adaptive_threshold:
         enabled: false
-
+        block_size: 31
+        C: 5
 
       sauvola:
         enabled: false
-        window_size: 31   # odd, 15–101
-        k: 0.34           # 0.1–0.6
-        R: 128            # 64–128
+        window_size: 31
+        k: 0.34
+        R: 128
 
 
     # ========================================================
-    # PROFILE: PDF AUTO (placeholder for future logic)
+    # PROFILE: PDF AUTO (PDF raster pages)
     # ========================================================
     pdf_auto:
 
-      # Currently behaves like scanner
       shadow_removal:
         enabled: false
+        morph_kernel: 31
 
       background_normalization:
         enabled: false
+        blur_ksize: 101
+        epsilon: 0.01
 
       gaussian_blur:
         enabled: true
@@ -266,19 +264,26 @@ preprocess:
 
       clahe:
         enabled: false
+        clip_limit: 2
+        tile_grid_size: 8
 
       sharpen:
         enabled: false
+        strength: 0.5
+        gaussian_ksize: 3
+        gaussian_sigma: 1
 
       adaptive_threshold:
         enabled: false
-
+        block_size: 31
+        C: 5
 
       sauvola:
         enabled: false
-        window_size: 31   # odd, 15–101
-        k: 0.34           # 0.1–0.6
-        R: 128            # 64–128
+        window_size: 31
+        k: 0.34
+        R: 128
+
 
 
 
@@ -296,7 +301,7 @@ ocr:
 
   # OCR languages (ORDER MATTERS)
   # Will be joined as "rus+eng" for Tesseract
-  languages: "rus,eng"
+  languages: eng,rus
 
   available_languages:
     - rus
@@ -540,28 +545,29 @@ document:
 
 # --- ODT document builder settings ---
 odt:
+  paper_size: A4
 
   # ==========================================================
   # ==== UI-controlled typography ============================
   # ==========================================================
 
   # Default font family (UI)
-  font_name: "Times New Roman"
+  font_name: Ubuntu Sans
 
   # Font size in points (UI)
-  font_size_pt: 12
+  font_size_pt: 13
 
   # Text alignment (UI) — left, center, right, justify
-  text_align: "justify"
+  text_align: justify
 
   # First line indent in millimeters (UI)
-  first_line_indent_mm: 10
+  first_line_indent_mm: 20
 
   # Paragraph spacing after paragraph (pt) (UI)
   paragraph_spacing_after_pt: 6
 
   # Line height as percentage (UI) — 100 = normal
-  line_height_percent: 120
+  line_height_percent: 100
 
 
   # ==========================================================
@@ -587,72 +593,50 @@ odt:
   max_empty_lines: 1
 
 
-# ==========================================================
-# ==== Internal OCR layout detection (not shown in UI) =====
-# ==========================================================
-
-# Threshold for detecting blank lines
-gap_empty_threshold: 1.9
-
-# Paragraph detection tuning
-paragraph_indent_min: 99.99
-paragraph_indent_max: 99.99
-paragraph_continue_max: 125
-paragraph_indent_spaces: 4
-
-# Advanced definition-list detection
-definition_left_min: 500
-definition_left_max: 600
-definition_right_min: 3000
-definition_right_max: 3960
-definition_gap_threshold: 1.2
-definition_gap_min: 40
-
-# Style names inside ODT
-styles:
-  title: "Title"
-  paragraph: "Text Body"
-
-
 
 # --- GUI (Qt interface) settings ---
 ui:
-  theme_mode: dark               # light / dark / auto / system
-  custom_qss: ""                 # optional path to user .qss
+  toolbar_icon_size: 24
+  theme_mode: dark  # light / dark / auto / system
+  custom_qss:   # optional path to user .qss
 
-  app_font_family: ""            # if empty → системный
-  app_font_size: 11              # base UI font size
+  app_font_family: Ubuntu  # if empty → системный
+  app_font_size: 12  # base UI font size
   font_size: 11                  # старый ключ, синхронизируем с app_font_size
   log_font_size: 10              # new: log font size
 
-  toolbar_style: "icons_text"    # icons / text / icons_text
-  thumbnail_size: 130            # size in px
+  toolbar_style: icons_text  # icons / text / icons_text
+  thumbnail_size: 100  # size in px
 
-  notify_on_finish: true         # Show notification when OCR completes
-  play_sound_on_finish: true     # Play success sound after processing
-  sound_volume: 70               # Volume level (0–100)
+  notify_on_finish: false  # Show notification when OCR completes
+  play_sound_on_finish: false  # Play success sound after processing
+  sound_volume: 80  # Volume level (0–100)
   sound_path: "sounds/done.wav"  # Path inside resources.qrc
 
-  language: en                   # inttrface language
+  language: en  # inttrface language
 
 
   # ----------------------------------------------------------
   # Control level for settings UI
   #
   # false → Standard mode:
-  #         показываем только безопасные/упрощённые настройки.
+  #         Only simplified / safe options are visible.
   #
   # true  → Professional mode:
-  #         показываем детальные параметры (предобработка/OCR и т.д.).
-  #         Изменение этих параметров влияет на качество OCR.
+  #         Advanced parameters become visible
+  #         (preprocess, OCR tuning, logging, etc.).
+  #         These settings directly influence OCR quality.
   # ----------------------------------------------------------
   expert_mode: false
-  show_preprocess_tab: false # false убирает вкладку Preprocess, true показываем вкладку Preprocess.
-  show_logging_tab: false  # false → вкладка Logging скрыта
+
+  # Show or hide specific tabs in Settings dialog
+  show_preprocess_tab: true    # false → hide Preprocess tab
+  show_logging_tab: true       # false → hide Logging tab
+
 
 
 theme:
-  active_pack: "dark"
+  active_pack: "dark" # dark
   custom_qss: ""
   tokens:
     bg1: "#1e1e1e"
@@ -668,9 +652,5 @@ theme:
 
 
 
-
-# --- Layout classification ---
-classification:
-  caps_ratio: 0.5              # Minimum capital-letter ratio to consider text as title
-  center_tolerance_px: 20      # Pixel tolerance for center alignment detection
-
+export:
+  last_dir: /home/ro/Documents/тест

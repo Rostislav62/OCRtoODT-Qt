@@ -65,6 +65,12 @@ public:
     void highlightTextLine(const QRect &bbox);
     void clearTextHighlight();
 
+    // ============================================================
+    // Reset preview state completely
+    // ============================================================
+    void reset();
+
+
 signals:
     void imageClickedAt(const QPoint &imagePos);
     void imageHoveredAt(const QPoint &imagePos);
