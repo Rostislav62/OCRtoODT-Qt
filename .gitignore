@@ -1,47 +1,76 @@
-# Build directories
+# ----------------------------
+# Build outputs (CMake)
+# ----------------------------
 build/
+build-*/
 cmake-build*/
-.qtcreator/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+install_manifest.txt
+compile_commands.json
+*.ninja
+.ninja_deps
+.ninja_log
 
-# Qt
+# ----------------------------
+# Qt (Creator, moc/uic/rcc intermediates)
+# ----------------------------
 *.user
+*.user.*
 *.pro.user
 *.qbs.user
 *.autosave
 *.qmlc
 *.jsc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+
+# ----------------------------
+# Object / binary artifacts
+# ----------------------------
 *.o
 *.obj
+*.a
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
 
+# ----------------------------
 # IDE
+# ----------------------------
 .idea/
 .vscode/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-
-# Cache
-cache/
-
-# System
-*.swp
-*.DS_Store
-
-# Qt Creator
+.qtcreator/
 *.creator
 *.creator.user
-*.pro.user
 
-# Runtime config (user-specific)
+# ----------------------------
+# OS / editor temp
+# ----------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ----------------------------
+# Logs / runtime cache
+# ----------------------------
+*.log
+cache/
 .config/
 
-# AppImage build tools
+# ----------------------------
+# AppImage / linuxdeploy artifacts
+# ----------------------------
+AppDir/
+squashfs-root/
+*.AppImage
+*.appimage
 linuxdeploy*.AppImage
