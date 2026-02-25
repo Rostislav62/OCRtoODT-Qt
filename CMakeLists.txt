@@ -479,28 +479,15 @@ target_link_libraries(OCRtoODT PRIVATE
 )
 
 # ============================================================
-# Translations (.ts -> .qm) + embed into resources
+# Translations (.ts -> .qm) — Qt6 correct way
 # ============================================================
 
-set(TS_FILES
-    ${CMAKE_SOURCE_DIR}/resources/translations/ocrtoodt_ru.ts
-    ${CMAKE_SOURCE_DIR}/resources/translations/ocrtoodt_en.ts
-    ${CMAKE_SOURCE_DIR}/resources/translations/ocrtoodt_ro.ts
+qt_add_translations(OCRtoODT
+    TS_FILES
+        resources/translations/ocrtoodt_ru.ts
+        resources/translations/ocrtoodt_en.ts
+        resources/translations/ocrtoodt_ro.ts
 )
-
-# 1) Compile TS -> QM at build time
-qt_add_lrelease(OCRtoODT_QM_FILES
-    TS_FILES ${TS_FILES}
-)
-
-# 2) Embed generated QM into application resources under :/translations/
-qt_add_resources(OCRtoODT translations_qrc
-    PREFIX "/translations"
-    FILES ${OCRtoODT_QM_FILES}
-)
-
-# Ensure main target builds translations resources too
-target_sources(OCRtoODT PRIVATE ${translations_qrc})
 
 
 # ============================================================
