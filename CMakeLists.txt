@@ -532,6 +532,6 @@ install(FILES resources/icons/ocrtoodt.png
     DESTINATION share/icons/hicolor/256x256/apps
 )
 
-install(FILES OCRtoODT.desktop
+install(FILES resources/OCRtoODT.desktop
     DESTINATION share/applications
 )
