@@ -290,10 +290,15 @@ QString ThemeManager::buildFinalStylesheet(
 
     QString fontQss = QString(
                           "QWidget{font-family:\"%1\";font-size:%2pt;}"
-                          "QPlainTextEdit,QTextEdit,QLineEdit{font-size:%3pt;}")
+                          // log font apply ONLY to log-like text widgets (not line edits)
+                          "QPlainTextEdit,QTextEdit{font-size:%3pt;}"
+                          // editor font: same as app font (or +1/+2 if you want)
+                          "QLineEdit{font-size:%4pt;}"
+                          )
                           .arg(m_appFont.family())
                           .arg(m_appFont.pointSize())
-                          .arg(m_logFont.pointSize());
+                          .arg(m_logFont.pointSize())
+                          .arg(m_appFont.pointSize() /* + 2 */);
 
     return themed + "\n" + fontQss;
 }

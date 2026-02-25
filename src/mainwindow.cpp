@@ -62,6 +62,45 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    // ============================================================
+    //  OCR Result view tuning — allow A4-like text wrapping
+    // ============================================================
+
+    ui->listOcrText->setWordWrap(true);
+    ui->listOcrText->setUniformItemSizes(false);
+
+
+    // ============================================================
+    //  Layout tuning — A4 oriented proportions
+    // ============================================================
+
+    // Initial splitter proportions (Left / Center / Right)
+    {
+        QList<int> sizes;
+
+        const int total = width() > 0 ? width() : 1500;
+
+        // -10% thumbnails
+        int left  = total * 0.18;   // было визуально ~20%
+        // -15% preview
+        int center = total * 0.40;  // было ~40-45%
+        // всё остальное OCR
+        int right = total - left - center;
+
+        sizes << left << center << right;
+        ui->splitterMain->setSizes(sizes);
+
+        // OCR panel должен расширяться активнее
+        ui->splitterMain->setStretchFactor(0, 0); // left
+        ui->splitterMain->setStretchFactor(1, 1); // preview
+        ui->splitterMain->setStretchFactor(2, 2); // OCR result
+    }
+
+    // Minimum widths to avoid collapsing into unusable columns
+    ui->panelLeft->setMinimumWidth(180);
+    ui->panelCenter->setMinimumWidth(350);
+    ui->panelRight->setMinimumWidth(450);
+
     // --------------------------------------------------------
     // Progress Manager
     // --------------------------------------------------------
@@ -518,6 +557,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
     ui->lblStatus->setText(tr("Stopping OCR..."));
     ui->actionStop->setEnabled(false);
+
+    LogRouter::instance().info(
+        QString("[STATE] UI event=STOP_CLICK run=%1")
+            .arg(m_recognitionProcessor ?
+                     m_recognitionProcessor->currentRunId() : 0));
 
     m_recognitionProcessor->cancel();
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1548</width>
-    <height>939</height>
+    <width>1650</width>
+    <height>940</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -56,7 +56,7 @@
          <widget class="QGraphicsView" name="viewPreview">
           <property name="minimumSize">
            <size>
-            <width>600</width>
+            <width>420</width>
             <height>400</height>
            </size>
           </property>

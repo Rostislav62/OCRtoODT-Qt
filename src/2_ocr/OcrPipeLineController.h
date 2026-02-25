@@ -62,6 +62,11 @@ public:
     bool isRunning() const;
     void shutdownAndWait();
 
+    // --------------------------------------------------------
+    // Trace correlation: set by RecognitionProcessor per run
+    // --------------------------------------------------------
+    void setRunId(uint64_t id) { m_runId = id; }
+
 signals:
     void ocrMessage(QString msg);
     void ocrFinished();
@@ -72,6 +77,8 @@ private:
     static OcrPipelineController* s_instance;
 
     OcrPipelineWorker *m_worker = nullptr;
+
+    uint64_t m_runId = 0;
 
     std::atomic_bool m_cancelRequested{false};
     std::atomic_bool m_isRunning{false};

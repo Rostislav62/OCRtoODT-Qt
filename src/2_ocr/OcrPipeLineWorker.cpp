@@ -41,6 +41,12 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                               bool debug,
                               const std::atomic_bool *cancelFlag)
 {
+    LogRouter::instance().info(
+        QString("[STATE] run=%1 WORKER event=START pages=%2")
+            .arg(m_runId)
+            .arg(jobs.size()));
+
+
     m_jobs      = jobs;
     m_mode      = mode;
     m_debugMode = debug;
@@ -66,6 +72,11 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
     if (total == 0)
     {
         emit ocrMessage("No pages for OCR.");
+
+        LogRouter::instance().info(
+            QString("[STATE] run=%1 WORKER event=EMIT_FINISHED")
+                .arg(m_runId));
+
         emit ocrFinished();
         emit ocrCompleted({});
         return;

@@ -45,13 +45,11 @@ private:
     QString makeDefaultOdtPath(const QString &dir) const;
     QString makeDefaultDocxPath(const QString &dir) const;
 
-private:
     Ui::ExportDialog *ui = nullptr;
 
     // STEP 4 → STEP 5 data (source of truth)
     const QVector<Core::VirtualPage> *m_pages = nullptr;
 
-private:
     QString extensionForFormat(const QString &format) const;
     QString normalizedFileName(const QString &name,
                                const QString &format) const;

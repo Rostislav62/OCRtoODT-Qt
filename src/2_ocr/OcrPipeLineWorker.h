@@ -55,6 +55,7 @@ public:
                bool debug,
                const std::atomic_bool *cancelFlag);
 
+    void setRunId(uint64_t id) { m_runId = id; }
 
 public slots:
     // --------------------------------------------------------
@@ -84,6 +85,11 @@ signals:
     void ocrProgress(int done, int total);
 
 private:
+    // --------------------------------------------------------
+    // Trace correlation id (owned by RecognitionProcessor; injected by Controller)
+    // --------------------------------------------------------
+    uint64_t m_runId = 0;
+
     QVector<Ocr::Preprocess::PageJob> m_jobs;
 
     QString m_mode;

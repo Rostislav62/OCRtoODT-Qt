@@ -126,53 +126,54 @@
     </layout>
    </item>
 
-   <!-- Checkbox -->
-   <item>
-    <widget class="QCheckBox" name="checkOpenAfterExport">
-     <property name="text">
-      <string>Open file after export</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-
+    <item>
+     <widget class="QCheckBox" name="checkOpenAfterExport">
+      <property name="text">
+       <string>Open file after export</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    
    <!-- Buttons -->
-   <item>
-    <layout class="QHBoxLayout" name="layoutButtons">
-     <item>
-      <spacer>
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnOk">
-       <property name="minimumWidth">
-        <number>90</number>
-       </property>
-       <property name="text">
-        <string>OK</string>
-       </property>
-       <property name="default">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnCancel">
-       <property name="minimumWidth">
-        <number>90</number>
-       </property>
-       <property name="text">
-        <string>Cancel</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
+    <item>
+     <layout class="QHBoxLayout" name="layoutButtons">
+      <item>
+       <spacer>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </spacer>
+      </item>
+
+      <item>
+       <widget class="QPushButton" name="btnOk">
+        <property name="minimumWidth">
+         <number>90</number>
+        </property>
+        <property name="text">
+         <string>OK</string>
+        </property>
+        <property name="default">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+
+      <item>
+       <widget class="QPushButton" name="btnCancel">
+        <property name="minimumWidth">
+         <number>90</number>
+        </property>
+        <property name="text">
+         <string>Cancel</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
 
   </layout>
  </widget>

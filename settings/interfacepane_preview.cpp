@@ -46,15 +46,36 @@ void InterfaceSettingsPane::applyPreview()
 // ------------------------------------------------------------
 
 // Applies selected font family and size to all preview widgets.
+// Applies selected font family and size to preview subtree (live)
+// ------------------------------------------------------------
+// Font preview (QSS-based, consistent with ThemeManager)
+// ------------------------------------------------------------
 void InterfaceSettingsPane::applyPreviewFonts()
 {
     QFont font = ui->fontComboApp->currentFont();
     font.setPointSize(ui->spinAppFontSize->value());
 
-    applyFontRecursive(ui->previewRoot, font);
+    QString fontQss = QString(
+                          "QWidget { font-family: \"%1\"; font-size: %2pt; } "
+                          "QPlainTextEdit, QTextEdit, QLineEdit { font-size: %2pt; }")
+                          .arg(font.family())
+                          .arg(font.pointSize());
+
+    // IMPORTANT:
+    // We append font QSS to previewRoot stylesheet
+    // instead of using setFont(), because global ThemeManager
+    // enforces font via QWidget{} rule.
+    QString baseQss = ui->previewRoot->styleSheet();
+
+    // Remove previous font override if exists
+    QRegularExpression re("QWidget \\{ font-family:.*?\\}");
+    baseQss.remove(re);
+
+    ui->previewRoot->setStyleSheet(baseQss + "\n" + fontQss);
 }
 
 // Recursively applies font to a widget subtree (preview only).
+// Recursively applies font to entire widget subtree (preview only).
 void InterfaceSettingsPane::applyFontRecursive(QWidget *root, const QFont &font)
 {
     if (!root)
@@ -64,10 +85,10 @@ void InterfaceSettingsPane::applyFontRecursive(QWidget *root, const QFont &font)
 
     const auto children = root->findChildren<QWidget*>(
         QString(),
-        Qt::FindDirectChildrenOnly);
+        Qt::FindChildrenRecursively);
 
     for (QWidget *child : children)
-        applyFontRecursive(child, font);
+        child->setFont(font);
 }
 
 // Applies font to a single abstract button (utility helper).
@@ -115,7 +136,10 @@ void InterfaceSettingsPane::applyPreviewToolbar()
         button->setToolButtonStyle(style);
         button->setIconSize(iconSize);
         button->setMinimumWidth(42);
-        button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+
+        // Ensure "TextUnderIcon" is never vertically clipped
+        button->setMinimumHeight(56);
+        button->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     }
 }
 

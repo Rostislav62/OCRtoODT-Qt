@@ -12,7 +12,7 @@
   <property name="maximumSize">
    <size>
     <width>1500</width>
-    <height>620</height>
+    <height>16777215</height>
    </size>
   </property>
   <property name="sizePolicy">
@@ -151,6 +151,19 @@
         </item>
 
 
+        <item>
+         <spacer name="spacerLeftPushDown">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
 
         <!-- ================================================ -->
         <!-- Restore defaults button                          -->

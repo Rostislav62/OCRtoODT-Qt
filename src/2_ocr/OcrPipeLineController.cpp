@@ -94,6 +94,10 @@ OcrPipelineController::OcrPipelineController(QObject *parent)
             this,
             [this]()
             {
+                LogRouter::instance().info(
+                    QString("[STATE] run=%1 CTRL event=WORKER_FINISHED_SIGNAL")
+                        .arg(m_runId));
+
                 m_isRunning.store(false);
 
                 LogRouter::instance().info(
@@ -122,6 +126,13 @@ OcrPipelineController::~OcrPipelineController()
         m_cancelRequested.store(true);
         shutdownAndWait();
     }
+
+    LogRouter::instance().info(
+        QString("[STATE] run=%1 CTRL event=START_ENTER isRunning=%2")
+            .arg(m_runId)
+            .arg(m_isRunning.load()));
+
+
 
     // Controller should already be idle here.
     // Destructor must NOT attempt runtime reapply.
@@ -212,6 +223,11 @@ void OcrPipelineController::start(
     m_cancelRequested.store(false);
     m_isRunning.store(true);
 
+    LogRouter::instance().info(
+        QString("[STATE] run=%1 CTRL event=INVOKE_WORKER_START jobs=%2")
+            .arg(m_runId)
+            .arg(jobs.size()));
+
     // --------------------------------------------------------
     // Asynchronous start in worker thread
     // --------------------------------------------------------
@@ -219,6 +235,11 @@ void OcrPipelineController::start(
         m_worker,
         [this, jobs, mode, debugMode]()
         {
+            // --------------------------------------------------------
+            // Trace correlation: propagate run id into worker before start
+            // --------------------------------------------------------
+            m_worker->setRunId(m_runId);
+
             m_worker->start(jobs, mode, debugMode, &m_cancelRequested);
         },
         Qt::QueuedConnection
@@ -235,6 +256,11 @@ void OcrPipelineController::start(
 // ============================================================
 void OcrPipelineController::cancel()
 {
+    LogRouter::instance().info(
+        QString("[STATE] run=%1 CTRL event=CANCEL_ENTER isRunning=%2")
+            .arg(m_runId)
+            .arg(m_isRunning.load()));
+
     if (!m_isRunning.load())
         return;
 
@@ -270,6 +296,10 @@ bool OcrPipelineController::isRunning() const
 // ============================================================
 void OcrPipelineController::shutdownAndWait()
 {
+    LogRouter::instance().info(
+        QString("[STATE] run=%1 CTRL event=SHUTDOWN_BEGIN")
+            .arg(m_runId));
+
     if (!m_worker)
         return;
 
@@ -306,4 +336,8 @@ void OcrPipelineController::shutdownAndWait()
 
     // Stage 5 hardening: exactly-once idle notify
     notifyIdleOnce();
+
+    LogRouter::instance().info(
+        QString("[STATE] run=%1 CTRL event=SHUTDOWN_DONE")
+            .arg(m_runId));
 }

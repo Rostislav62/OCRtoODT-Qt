@@ -68,6 +68,8 @@ public:
 
     bool isProcessing() const { return m_isProcessing; }
 
+    uint64_t currentRunId() const { return m_runId; }
+
 signals:
     // STEP 2 status
     void ocrMessage(const QString &msg);
@@ -94,6 +96,32 @@ private:
         NoJobs,
         Shutdown
     };
+
+    // --------------------------------------------------------
+    // State machine + deterministic tracing
+    // --------------------------------------------------------
+    enum class PipelineState
+    {
+        Idle,
+        Step1_Preprocess,
+        Step2_OcrRunning,
+        Step2_CancelRequested,
+        Step2_ShuttingDown,
+        Step3_LineBuilding,
+        Step3_CancelRequested,
+        Completed
+    };
+
+    // Monotonic identifiers for strict log ordering.
+    std::atomic_uint64_t m_seq{0};
+    uint64_t             m_runId = 0;
+
+    PipelineState        m_state = PipelineState::Idle;
+
+    // State helpers (exactly-once transitions + trace)
+    void setState(PipelineState st, const char *event);
+    void traceState(const char *event, const QString &details = QString());
+    static const char* stateToStr(PipelineState st);
 
     void finalizeOnce(FinalStatus status, const QString &reason);
     void resetFinalizationState();

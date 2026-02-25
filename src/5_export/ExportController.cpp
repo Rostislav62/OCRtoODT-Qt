@@ -17,9 +17,6 @@
 
 #include "5_export/ExportController.h"
 
-#include <QDesktopServices>
-#include <QUrl>
-
 #include "core/LogRouter.h"
 #include "core/layout/OdtLayoutModel.h"
 #include "5_export/txt_export/TxtExporter.h"
@@ -58,12 +55,6 @@ bool ExportController::exportTxt(
         return false;
     }
 
-    // --------------------------------------------------------
-    // Open after export (if requested)
-    // --------------------------------------------------------
-    if (openAfter)
-        QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
-
     return true;
 }
 
@@ -99,9 +90,6 @@ bool ExportController::exportOdt(
         return false;
     }
 
-    if (openAfter)
-        QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
-
     return true;
 }
 
@@ -136,9 +124,6 @@ bool ExportController::exportDocx(
             "[ExportController] DOCX export failed");
         return false;
     }
-
-    if (openAfter)
-        QDesktopServices::openUrl(QUrl::fromLocalFile(outputPath));
 
     return true;
 }

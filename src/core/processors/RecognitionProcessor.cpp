@@ -4,7 +4,7 @@
 // ============================================================
 
 #include "core/processors/RecognitionProcessor.h"
-
+#include <atomic>
 #include <QFile>
 #include <QDir>
 
@@ -17,6 +17,54 @@
 #include "core/LogRouter.h"
 #include "core/VirtualPage.h"
 #include "core/ProgressManager.h"
+
+// ============================================================
+// State machine helpers
+// ============================================================
+
+const char* RecognitionProcessor::stateToStr(PipelineState st)
+{
+    switch (st)
+    {
+    case PipelineState::Idle:                return "IDLE";
+    case PipelineState::Step1_Preprocess:    return "STEP1_PREPROCESS";
+    case PipelineState::Step2_OcrRunning:    return "STEP2_OCR_RUNNING";
+    case PipelineState::Step2_CancelRequested:return "STEP2_CANCEL_REQUESTED";
+    case PipelineState::Step2_ShuttingDown:  return "STEP2_SHUTTING_DOWN";
+    case PipelineState::Step3_LineBuilding:  return "STEP3_LINE_BUILDING";
+    case PipelineState::Step3_CancelRequested:return "STEP3_CANCEL_REQUESTED";
+    case PipelineState::Completed:           return "COMPLETED";
+    }
+    return "UNKNOWN";
+}
+
+void RecognitionProcessor::traceState(const char *event, const QString &details)
+{
+    const uint64_t seq = ++m_seq;
+
+    QString msg = QString("[STATE] run=%1 seq=%2 state=%3 event=%4")
+                      .arg(m_runId)
+                      .arg(seq)
+                      .arg(stateToStr(m_state))
+                      .arg(event);
+
+    if (!details.isEmpty())
+        msg += QString(" %1").arg(details);
+
+    LogRouter::instance().info(msg);
+}
+
+void RecognitionProcessor::setState(PipelineState st, const char *event)
+{
+    // Always trace transitions, even if state remains the same.
+    const PipelineState prev = m_state;
+    m_state = st;
+
+    traceState(event,
+               QString("prev=%1 next=%2")
+                   .arg(stateToStr(prev))
+                   .arg(stateToStr(st)));
+}
 
 
 // ============================================================
@@ -75,6 +123,26 @@ void RecognitionProcessor::ensureControllers()
             this, &RecognitionProcessor::onOcrCompletedFromOcr,
             Qt::QueuedConnection);
 
+    // --------------------------------------------------------
+    // CANCEL finalization hook
+    // --------------------------------------------------------
+    connect(m_ocrController,
+            &Ocr::OcrPipelineController::ocrFinished,
+            this,
+            [this]()
+            {
+                // If STEP2 was cancelled — finalize here.
+                if (m_state == PipelineState::Step2_CancelRequested ||
+                    m_state == PipelineState::Step2_ShuttingDown)
+                {
+                    traceState("CANCEL_FINALIZE_ON_OCR_FINISHED");
+
+                    setState(PipelineState::Idle, "CANCEL_TO_IDLE");
+
+                    finalizeOnce(FinalStatus::Cancelled, tr("Cancelled"));
+                }
+            });
+
 
     connect(m_ocrController,
             &Ocr::OcrPipelineController::ocrProgress,
@@ -105,6 +173,10 @@ void RecognitionProcessor::resetFinalizationState()
     // Reset run-phase markers for the new run.
     m_phase = RunPhase::Idle;
     m_seenOcrCompleted = false;
+
+    // State machine reset:
+    // Sequence is monotonic across process lifetime; only run_id increments.
+    m_state = PipelineState::Idle;
 
     // Reset progress delta tracking (defensive; Step2 will set it anyway).
     m_lastOcrDone = 0;
@@ -189,6 +261,9 @@ void RecognitionProcessor::setJobs(const QVector<Ocr::Preprocess::PageJob> &jobs
     {
         LogRouter::instance().warning(
             "[RecognitionProcessor] setJobs() ignored: processing active.");
+
+        traceState("SETJOBS_IGNORED_PROCESSING_ACTIVE");
+
         return;
     }
 
@@ -212,6 +287,13 @@ void RecognitionProcessor::run()
         return;
     }
 
+    resetFinalizationState(); // сначала сброс состояния
+
+    // New run id for deterministic tracing
+    ++m_runId;
+    traceState("RUN_REQUESTED");
+
+
     // Defensive guard:
     // Running without jobs is invalid state unless explicitly reconfigured.
     // Prevent accidental re-run with stale state.
@@ -222,7 +304,9 @@ void RecognitionProcessor::run()
         return;
     }
 
-    resetFinalizationState();
+
+    setState(PipelineState::Step2_OcrRunning, "ENTER_STEP2");
+
 
     // Stage 5 hardening: entering STEP2 (OCR running)
     m_phase = RunPhase::Step2_OcrRunning;
@@ -250,6 +334,20 @@ void RecognitionProcessor::run()
 
     m_watchdogTimer->start(timeoutSec * 1000);
 
+    traceState("CALL_CONTROLLER_START",
+               QString("jobs=%1 timeoutSec=%2").arg(m_jobs.size()).arg(timeoutSec));
+
+    // Investigation mode:
+    // Force single-thread externally (controller/pipeline reads config).
+    const bool forceSingleThread =
+        ConfigManager::instance().get("general.force_single_thread", false).toBool();
+
+    if (forceSingleThread)
+        traceState("FORCE_SINGLE_THREAD_ENABLED");
+
+    if (m_ocrController)
+        m_ocrController->setRunId(m_runId);
+
     m_ocrController->start(m_jobs);
 }
 
@@ -264,6 +362,9 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
         QString("[RecognitionProcessor] onOcrCompletedFromOcr: pages=%1").arg(pages.size()));
     if (!pages.isEmpty())
     {
+        traceState("RECEIVED_OCR_COMPLETED_SIGNAL",
+                   QString("pages=%1").arg(pages.size()));
+
         LogRouter::instance().info(
             QString("[RecognitionProcessor] sample page0: idx=%1 success=%2 tsv=%3")
                 .arg(pages[0].globalIndex)
@@ -275,6 +376,17 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
     // Ignore late completion if already finalized (race safety).
     if (m_finalized)
         return;
+
+    // If cancel was requested, completion must not advance into STEP3.
+    if (m_state == PipelineState::Step2_CancelRequested ||
+        m_state == PipelineState::Step2_ShuttingDown ||
+        m_state == PipelineState::Step3_CancelRequested)
+    {
+        traceState("IGNORED_COMPLETED_DUE_TO_CANCEL");
+        return;
+    }
+
+    setState(PipelineState::Step3_LineBuilding, "ENTER_STEP3");
 
     // Stage 5 hardening:
     // We have entered STEP3. From this point ocrFinished must NOT cancel the run.
@@ -323,6 +435,16 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
     m_lastOcrDone = 0;
     if (m_progressManager)
         m_progressManager->startStage(tr("Line building"), 1, 2, m_pages.size());
+
+
+    traceState("STEP3_LOOP_BEGIN",
+               QString("pages=%1 mode=%2 debug=%3")
+                   .arg(m_pages.size())
+                   .arg(mode)
+                   .arg(debugMode));
+
+
+
 
     for (Core::VirtualPage &vp : m_pages)
     {
@@ -423,9 +545,15 @@ void RecognitionProcessor::onOcrCompletedFromOcr(
             .arg(m_pages.size())
             .arg(withTable));
 
+    setState(PipelineState::Completed, "PIPELINE_COMPLETED");
+
     // Stage 5 hardening:
     // Finalize FIRST (flip flags, finish progress), then publish results.
     finalizeOnce(FinalStatus::Success, tr("OCR completed"));
+
+    // After finalize barrier, we publish the result snapshot.
+    traceState("EMIT_OCR_COMPLETED",
+               QString("pages=%1 withLineTable=%2").arg(m_pages.size()).arg(withTable));
 
     emit ocrCompleted(m_pages);
 }
@@ -435,8 +563,32 @@ void RecognitionProcessor::cancel()
     if (!m_isProcessing)
         return;
 
+    // Prevent repeated cancel from spamming logs and re-entering shutdown.
+    // Cancel must be strictly idempotent.
+    //
+    // Ignore if:
+    //  • already idle
+    //  • already shutting down
+    //  • cancel already requested
+    //  • already completed
+    //
+    if (m_state == PipelineState::Idle ||
+        m_state == PipelineState::Step2_ShuttingDown ||
+        m_state == PipelineState::Step2_CancelRequested ||
+        m_state == PipelineState::Step3_CancelRequested ||
+        m_state == PipelineState::Completed)
+    {
+        traceState("CANCEL_IGNORED_ALREADY_IN_TERMINAL_STATE");
+        return;
+    }
+
+    setState(PipelineState::Step2_CancelRequested, "UI_CANCEL_REQUESTED");
+
     LogRouter::instance().info(
         "[RecognitionProcessor] Cancel requested.");
+
+
+    traceState("CALL_CONTROLLER_CANCEL");
 
     // Stage 5 hardening:
     // mark that we are no longer expecting success path from STEP2.
@@ -444,6 +596,7 @@ void RecognitionProcessor::cancel()
 
     if (m_ocrController)
         m_ocrController->cancel();
+
 
     if (m_watchdogTimer->isActive())
         m_watchdogTimer->stop();
@@ -455,13 +608,19 @@ void RecognitionProcessor::shutdownAndWait()
     if (!m_isProcessing)
         return;
 
+    setState(PipelineState::Step2_ShuttingDown, "SHUTDOWN_AND_WAIT_ENTER");
+
     LogRouter::instance().info(
         "[RecognitionProcessor] shutdownAndWait() invoked.");
 
     if (m_ocrController)
     {
+        traceState("CALL_CONTROLLER_SHUTDOWN_AND_WAIT");
+
         m_ocrController->shutdownAndWait();
     }
+
+    setState(PipelineState::Idle, "SHUTDOWN_AND_WAIT_DONE");
 
     finalizeOnce(FinalStatus::Shutdown, tr("Shutdown"));
 }
@@ -478,9 +637,14 @@ void RecognitionProcessor::clearSession()
     {
         LogRouter::instance().warning(
             "[RecognitionProcessor] clearSession() ignored: processing active.");
+
+        traceState("CLEARSESSION_IGNORED_PROCESSING_ACTIVE");
+
         return;
     }
     LogRouter::instance().info("[RecognitionProcessor] Clearing session");
+
+    setState(PipelineState::Idle, "CLEARSESSION");
 
     // Free allocated LineTables from previous run
     clearOldLineTables();

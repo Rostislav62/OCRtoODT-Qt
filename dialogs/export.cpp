@@ -17,6 +17,10 @@
 
 #include <QFileDialog>
 #include <QDir>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QProcess>
+#include <QFileInfo>
 
 // STEP 5
 #include "5_document/DocumentBuilder.h"
@@ -176,15 +180,41 @@ void ExportDialog::onOkClicked()
 
     Step5::DocumentDebugWriter::writeIfEnabled(doc, debugEnabled);
 
-    const bool openAfter =
-        ui->checkOpenAfterExport->isChecked();
+    bool ok = false;
 
     if (format == "TXT")
-        ExportController::exportTxt(doc, outPath, openAfter);
+        ok = ExportController::exportTxt(doc, outPath, false);
     else if (format == "ODT")
-        ExportController::exportOdt(doc, outPath, openAfter);
+        ok = ExportController::exportOdt(doc, outPath, false);
     else if (format == "DOCX")
-        ExportController::exportDocx(doc, outPath, openAfter);
+        ok = ExportController::exportDocx(doc, outPath, false);
+
+    if (!ok)
+    {
+        LogRouter::instance().warning(
+            tr("[ExportDialog] Export failed"));
+        return;
+    }
+
+    // --------------------------------------------------------
+    // Open after export (if checkbox enabled)
+    // --------------------------------------------------------
+    if (ui->checkOpenAfterExport->isChecked())
+    {
+        const QString absPath =
+            QFileInfo(outPath).absoluteFilePath();
+
+        LogRouter::instance().info(
+            QString("[ExportDialog] Opening via xdg-open: %1")
+                .arg(absPath));
+
+        QProcess::startDetached(
+            "/usr/bin/env",
+            QStringList() << "xdg-open" << absPath);
+    }
+
+    // Закрываем диалог ТОЛЬКО после успешного экспорта
+    accept();
 
     LogRouter::instance().info(
         tr("[ExportDialog] Export %1 → %2")
