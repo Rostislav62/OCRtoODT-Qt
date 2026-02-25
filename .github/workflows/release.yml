@@ -91,7 +91,6 @@ jobs:
             --desktop-file AppDir/usr/share/applications/OCRtoODT.desktop \
             --icon-file resources/icons/ocrtoodt.png \
             --plugin qt \
-            --extra-plugins=imageformats,iconengines,platforms \
             --output appimage
 
       # ------------------------------------------------------------
