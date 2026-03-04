@@ -1,7 +1,23 @@
 # **🧠 OCRtoODT**
 
+![Build](https://github.com/Rostislav62/OCRtoODT-Qt/actions/workflows/release.yml/badge.svg)
+
+![Release](https://img.shields.io/github/v/release/Rostislav62/OCRtoODT-Qt)
+
 ## **Structured OCR Extraction & Deterministic Processing Engine**
 
+## 📥 Download
+
+Prebuilt AppImage is available on the Releases page.
+
+Latest release:
+
+https://github.com/Rostislav62/OCRtoODT-Qt/releases/latest
+
+Download and run:
+
+chmod +x OCRtoODT-x86_64.AppImage  
+./OCRtoODT-x86_64.AppImage
 
 ## **📌 Overview**
 
@@ -20,7 +36,7 @@ It is a **deterministic, inspectable OCR data pipeline** designed for:
 
 - structured document processing
 
-- reproducible OCR experimentsё
+- reproducible OCR experiments
 
 The focus is on:
 
@@ -32,7 +48,7 @@ The focus is on:
 
 - full traceability
 
-# **🎯 Philosophy**
+## **🎯 Philosophy**
 
 Structure first. Formatting later.
 
@@ -117,11 +133,8 @@ Threaded and resource-aware.
 
 - Cooperative cancellation
 
-Tesseract is included inside the project:
 
-thirdparty/tesseract/
-
-thirdparty/tessdata/
+Tesseract engine is bundled in the final AppImage build.
 
 
 No external system Tesseract installation is required.
