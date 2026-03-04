@@ -97,6 +97,7 @@ public slots:
 
     void on_actionStop_triggered();
 
+    void onOcrLanguagesChanged();
 
 private:
 
@@ -130,6 +131,10 @@ private:
 
     // Progress Manager
     Core::ProgressManager *m_progressManager = nullptr;
+
+    // Auto-run after language download
+    bool m_pendingRunAfterLangDownload = false;
+    bool m_autoRerunArmed = false;          // защита от повторного singleShot
 };
 
 #endif // MAINWINDOW_H

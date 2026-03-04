@@ -1,5 +1,9 @@
+# ============================================================
+# OCRtoODT — Git Ignore Rules
+# ============================================================
+
 # ----------------------------
-# Build outputs (CMake)
+# Build outputs (CMake / Ninja)
 # ----------------------------
 build/
 build-*/
@@ -13,6 +17,18 @@ compile_commands.json
 *.ninja
 .ninja_deps
 .ninja_log
+
+# ----------------------------
+# Object / binary artifacts
+# ----------------------------
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
 
 # ----------------------------
 # Qt (Creator, moc/uic/rcc intermediates)
@@ -30,18 +46,6 @@ qrc_*.cpp
 ui_*.h
 
 # ----------------------------
-# Object / binary artifacts
-# ----------------------------
-*.o
-*.obj
-*.a
-*.so
-*.so.*
-*.dll
-*.dylib
-*.exe
-
-# ----------------------------
 # IDE
 # ----------------------------
 .idea/
@@ -51,7 +55,7 @@ ui_*.h
 *.creator.user
 
 # ----------------------------
-# OS / editor temp
+# OS / editor temporary files
 # ----------------------------
 .DS_Store
 Thumbs.db
@@ -65,6 +69,25 @@ Thumbs.db
 *.log
 cache/
 .config/
+
+# ----------------------------
+# OCR runtime data (not part of repo)
+# ----------------------------
+tessdata/
+
+# OCR profile runtime exports
+ocr_profiles.json
+
+# ----------------------------
+# Local test / installation directories
+# ----------------------------
+test-install/
+
+# ----------------------------
+# Temporary / backup files
+# ----------------------------
+*_old
+*.old
 
 # ----------------------------
 # AppImage / linuxdeploy artifacts

@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(OCRtoODT VERSION 1.0.0 LANGUAGES CXX)
+project(OCRtoODT VERSION 3.0.2 LANGUAGES CXX)
 
 # ------------------------------------------------------------
 # Application version (available in C++ as APP_VERSION)
@@ -451,6 +451,13 @@ add_executable(OCRtoODT
     src/core/ocr/OcrLanguageManager.h
     src/core/ocr/OcrLanguageManager.cpp
     resources/ocr_languages/ocr_languages.json
+
+
+    src/core/ocr/TessdataManager.h
+    src/core/ocr/TessdataManager.cpp
+    src/core/ocr/LanguageDownloader.h
+    src/core/ocr/LanguageDownloader.cpp
+    scripts/tag_from_cmake.sh
 )
 
 # ============================================================

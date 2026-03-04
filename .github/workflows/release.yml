@@ -94,12 +94,21 @@ jobs:
             --output appimage
 
       # ------------------------------------------------------------
+      # Build AppImage
+      # ------------------------------------------------------------
+      - name: Rename AppImage with version
+        run: |
+          VER="${GITHUB_REF_NAME#v}"   # tag "v3.0.2" -> "3.0.2"
+          mv "OCRtoODT-x86_64.AppImage" "OCRtoODT-v${VER}-x86_64.AppImage"      
+      
+      
+      # ------------------------------------------------------------
       # Upload Release Asset
       # ------------------------------------------------------------
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
-          files: OCRtoODT-x86_64.AppImage
+          files: OCRtoODT-v*-x86_64.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -289,6 +289,17 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         const QByteArray datapathBytes = datapath.toUtf8();
         const QByteArray langBytes     = languages.toUtf8();
 
+        LogRouter::instance().info(
+            QString("[OcrPageWorker] Tesseract datapath: %1").arg(datapath));
+
+        for (const QString& code : languages.split('+'))
+        {
+            const QString p = QDir(tessdataDir).filePath(code + ".traineddata");
+            LogRouter::instance().info(
+                QString("[OcrPageWorker] traineddata check: %1 exists=%2")
+                    .arg(p)
+                    .arg(QFile::exists(p) ? "true" : "false"));
+        }
         // Init Tesseract
         if (api.Init(datapathBytes.constData(),
                      langBytes.constData(),

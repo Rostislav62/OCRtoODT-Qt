@@ -6,6 +6,8 @@
 
 #include "LanguageMeta.h"
 #include "OcrProfileStorage.h"
+#include "TessdataManager.h"
+#include "LanguageDownloader.h"
 
 // ============================================================
 //  OCRtoODT — OCR Language Manager
@@ -63,8 +65,22 @@ public:
     bool createProfile(const QString& name,
                        const QStringList& langs);
 
+    QString tessdataDir() const;
+
+    bool languageInstalled(const QString& code) const;
+
+    void downloadLanguage(const QString& code);
+
+    // Starts downloads for missing languages (non-blocking)
+    void ensureActiveLanguagesInstalled();
 
     QString buildTesseractLanguageString() const;
+
+    // Preflight: ensure traineddata exists (starts download if missing)
+    // Returns true if everything is already installed.
+    // Returns false if download(s) started (caller must wait).
+    bool ensureActiveLanguagesReady();
+
     void saveActiveProfile();
 
 
@@ -78,4 +94,7 @@ private:
     mutable QStringList m_cachedInstalled;
 
     OcrProfileStorage m_storage;
+
+    TessdataManager m_tessdata;
+    LanguageDownloader m_downloader;
 };

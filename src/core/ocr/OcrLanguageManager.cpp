@@ -44,6 +44,15 @@ OcrLanguageManager::OcrLanguageManager(QObject *parent)
     // --------------------------------------------------------
     m_storage.load();
 
+    connect(&m_downloader,
+            &LanguageDownloader::downloadFinished,
+            this,
+            [this](const QString&)
+            {
+                m_cachedInstalled.clear();
+                emit languagesChanged();
+            });
+
     // --------------------------------------------------------
     // Backward compatibility migration:
     // If legacy key "ocr.languages" exists and default profile
@@ -164,74 +173,67 @@ QString OcrLanguageManager::displayNameFor(const QString& code) const
     return QString("%1 (%2)").arg(name, code);
 }
 
+
+QString OcrLanguageManager::tessdataDir() const
+{
+    return m_tessdata.tessdataDir();
+}
+
+bool OcrLanguageManager::languageInstalled(const QString& code) const
+{
+    return m_tessdata.hasLanguage(code);
+}
+
+void OcrLanguageManager::downloadLanguage(const QString& code)
+{
+    const QString path = m_tessdata.traineddataPath(code);
+
+    m_downloader.downloadLanguage(code, path);
+}
+
+void OcrLanguageManager::ensureActiveLanguagesInstalled()
+{
+    const QStringList active = activeLanguages();
+
+    for (const QString& lang : active)
+    {
+        if (lang.trimmed().isEmpty())
+            continue;
+
+        if (!languageInstalled(lang))
+        {
+            LogRouter::instance().info(
+                QString("[OcrLanguageManager] Auto-download missing language: %1").arg(lang));
+
+            downloadLanguage(lang);
+        }
+    }
+}
+
 // ============================================================
 // Tessdata scan
 // ============================================================
+// Resolve tessdata directory (runtime location)
+// ============================================================
 QString OcrLanguageManager::resolvedTessdataDir() const
 {
-    ConfigManager& cfg = ConfigManager::instance();
+    const QString dirPath = m_tessdata.tessdataDir();
 
-    QString tessDir =
-        cfg.get(KEY_TESSDATA_DIR, "tessdata").toString().trimmed();
-
-    QDir dir(tessDir);
-
-    if (dir.isRelative())
-    {
-        const QString exeDir =
-            QCoreApplication::applicationDirPath();
-
-        tessDir = QDir(exeDir).filePath(tessDir);
-        dir = QDir(tessDir);
-    }
-
-    const QString dirPath = dir.absolutePath();
+    QDir dir(dirPath);
 
     if (!dir.exists())
         QDir().mkpath(dirPath);
 
     LogRouter::instance().info(
-        QString("[OcrLanguageManager] Tessdata dir: %1").arg(dirPath));
+        QString("[OcrLanguageManager] Tessdata dir: %1")
+            .arg(dirPath));
 
     return dirPath;
 }
 
 QStringList OcrLanguageManager::scanInstalledLanguages() const
 {
-    const QString tessDir = resolvedTessdataDir();
-    QDir dir(tessDir);
-
-    if (!dir.exists())
-    {
-        LogRouter::instance().warning(
-            QString("[OcrLanguageManager] tessdata dir not found: %1")
-                .arg(tessDir));
-        return {};
-    }
-
-    QStringList result;
-
-    const QFileInfoList files =
-        dir.entryInfoList(QStringList() << "*.traineddata", QDir::Files);
-
-    for (const QFileInfo& fi : files)
-    {
-        const QString code = fi.completeBaseName();
-
-        if (code == "osd" || code == "equ")
-            continue;
-
-        result << code;
-    }
-
-    result.removeDuplicates();
-    result.sort(Qt::CaseInsensitive);
-
-    LogRouter::instance().info(
-        QString("[OcrLanguageManager] Installed languages: %1")
-            .arg(result.join(",")));
-
-    return result;
+    return m_tessdata.installedLanguages();
 }
 
 QStringList OcrLanguageManager::installedLanguages() const
@@ -407,15 +409,13 @@ QString OcrLanguageManager::buildTesseractLanguageString() const
             final << lang;
         else
             LogRouter::instance().warning(
-                QString("[OcrLanguageManager] Language not installed: %1")
-                    .arg(lang));
+                QString("[OcrLanguageManager] Language not installed: %1").arg(lang));
     }
 
     const QString result = final.join('+');
 
     LogRouter::instance().info(
-        QString("[OcrLanguageManager] Final Tesseract string: %1")
-            .arg(result));
+        QString("[OcrLanguageManager] Final Tesseract string: %1").arg(result));
 
     return result;
 }
@@ -466,4 +466,29 @@ bool OcrLanguageManager::setLanguagesForProfile(
     m_storage.setLanguages(trimmed, langs);
     emit languagesChanged();
     return true;
+}
+
+bool OcrLanguageManager::ensureActiveLanguagesReady()
+{
+    const QStringList active = activeLanguages();
+
+    QStringList missing;
+    for (const QString& lang : active)
+    {
+        if (!languageInstalled(lang))
+            missing << lang;
+    }
+
+    if (missing.isEmpty())
+        return true;
+
+    // Start downloads (async)
+    for (const QString& lang : missing)
+    {
+        LogRouter::instance().info(
+            QString("[OcrLanguageManager] Auto-download missing language: %1").arg(lang));
+        downloadLanguage(lang);
+    }
+
+    return false;
 }

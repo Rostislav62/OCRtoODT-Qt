@@ -16,6 +16,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QCloseEvent>
+#include <QTimer>
 
 
 // ------------------------------------------------------------
@@ -30,6 +31,7 @@
 #include "core/processors/RecognitionProcessor.h"
 #include "core/ConfigManager.h"
 #include "core/LogRouter.h"
+#include "core/ocr/OcrLanguageManager.h"
 
 // Preview rendering
 #include "0_input/PreviewController.h"
@@ -190,6 +192,11 @@ MainWindow::MainWindow(QWidget *parent)
     // --------------------------------------------------------
     m_recognitionProcessor = new RecognitionProcessor(this);
 
+    connect(&OcrLanguageManager::instance(),
+            &OcrLanguageManager::languagesChanged,
+            this,
+            &MainWindow::onOcrLanguagesChanged);
+
     // --------------------------------------------------------
     // Initial UI state
     // --------------------------------------------------------
@@ -297,6 +304,9 @@ void MainWindow::on_actionClear_triggered()
     ui->lblStatus->setText(tr("Ready"));
 
     updateUiState();
+
+    m_pendingRunAfterLangDownload = false;
+    m_autoRerunArmed = false;
 }
 
 
@@ -316,6 +326,16 @@ void MainWindow::on_actionRun_triggered()
     if (jobs.isEmpty())
     {
         ui->lblStatus->setText(tr("No input loaded"));
+        updateUiState();
+        return;
+    }
+
+    auto& lm = OcrLanguageManager::instance();
+
+    if (!lm.ensureActiveLanguagesReady())
+    {
+        m_pendingRunAfterLangDownload = true;
+        ui->lblStatus->setText(tr("Downloading OCR language data…"));
         updateUiState();
         return;
     }
@@ -578,4 +598,56 @@ void MainWindow::attemptShutdown()
     // Разрешаем закрытие после полного завершения pipeline
     m_shutdownRequested = false;
     close();
+}
+
+void MainWindow::onOcrLanguagesChanged()
+{
+    // Авто-повтор нужен только если мы ранее заблокировали RUN из-за скачивания
+    if (!m_pendingRunAfterLangDownload)
+        return;
+
+    // Если OCR сейчас работает — ничего не делаем, подождем следующего изменения
+    if (m_recognitionProcessor && m_recognitionProcessor->isProcessing())
+        return;
+
+    // Проверяем: все ли языки уже готовы.
+    // ВАЖНО: ensureActiveLanguagesReady() может стартовать недостающие докачки.
+    auto& lm = OcrLanguageManager::instance();
+    if (!lm.ensureActiveLanguagesReady())
+    {
+        // Еще не готово — остаемся в режиме ожидания
+        ui->lblStatus->setText(tr("Downloading OCR language data…"));
+        updateUiState();
+        return;
+    }
+
+    // Готово → запускаем RUN один раз через event loop (без реэнтранси)
+    if (m_autoRerunArmed)
+        return;
+
+    m_autoRerunArmed = true;
+
+    QTimer::singleShot(0, this, [this]()
+                       {
+                           m_autoRerunArmed = false;
+
+                           // Могли успеть очистить/закрыть — перепроверим
+                           if (!m_pendingRunAfterLangDownload)
+                               return;
+
+                           if (!m_inputProcessor || !m_recognitionProcessor)
+                               return;
+
+                           if (m_recognitionProcessor->isProcessing())
+                               return;
+
+                           // Снимаем флаг ДО запуска, чтобы если снова начнется download,
+                           // мы могли снова корректно поставить флаг.
+                           m_pendingRunAfterLangDownload = false;
+
+                           ui->lblStatus->setText(tr("Starting OCR…"));
+                           updateUiState();
+
+                           on_actionRun_triggered();
+                       });
 }
