@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "profiles": {
+    "default": {
+      "languages": ["rus", "eng"]
+    },
+    "english_only": {
+      "languages": ["eng"]
+    }
+  }
+}

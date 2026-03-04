@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/resources">
+        <file alias="ocr_languages.json">ocr_languages/ocr_languages.json</file>
+    </qresource>
+</RCC>
