@@ -27,6 +27,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify tag matches CMake version
+        run: |
+          TAG="${GITHUB_REF_NAME}"      # e.g. v3.0.2
+          VER_TAG="${TAG#v}"
+
+          VER_CMAKE="$(perl -ne 'print "$1\n" if /project\s*\(\s*OCRtoODT\s+VERSION\s+([0-9]+\.[0-9]+\.[0-9]+)/i' CMakeLists.txt | head -n1)"
+
+          echo "Tag version   : $VER_TAG"
+          echo "CMake version : $VER_CMAKE"
+
+          if [ "$VER_TAG" != "$VER_CMAKE" ]; then
+            echo "ERROR: Tag version does not match CMakeLists.txt"
+            exit 1
+          fi
+
       # ------------------------------------------------------------
       # Install dependencies
       # ------------------------------------------------------------

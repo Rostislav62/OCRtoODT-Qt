@@ -18,6 +18,7 @@ compile_commands.json
 .ninja_deps
 .ninja_log
 
+
 # ----------------------------
 # Object / binary artifacts
 # ----------------------------
@@ -88,6 +89,12 @@ test-install/
 # ----------------------------
 *_old
 *.old
+_project_dump/
+full_project_dump.sh
+project_dump.txt
+run_build_appimage.sh
+project_dump.txt
+translations/
 
 # ----------------------------
 # AppImage / linuxdeploy artifacts
