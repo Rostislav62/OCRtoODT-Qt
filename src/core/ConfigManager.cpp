@@ -104,6 +104,10 @@ bool ConfigManager::load(const QString &path)
     while (!ts.atEnd())
         m_lines.append(ts.readLine());
 
+    LogRouter::instance().info(
+        QString("[ConfigManager] Lines loaded: %1").arg(m_lines.size()));
+
+    dump();
     // After load — perform automatic key migration
     migrate();
 
@@ -213,8 +217,13 @@ QSet<QString> ConfigManager::allowedScalarKeys()
             // ----------------------------------------------------
             // Recognition
             // ----------------------------------------------------
-            "recognition.language",
             "recognition.psm",
+
+            // ----------------------------------------------------
+            // OCR (runtime / profiles)
+            // ----------------------------------------------------
+            "ocr.tessdata_dir",
+            "ocr.active_profile",
 
             // ----------------------------------------------------
             // ODT
@@ -1008,8 +1017,8 @@ QMap<QString, QVariant> ConfigManager::defaultScalarValues()
             {"ui.thumbnail_size",      130},
             {"ui.language",            "en"}, // NEW
             {"ui.expert_mode",         true},
-            {"ui.notify_on_finish",    false},
-            {"ui.play_sound_on_finish", false},
+            {"ui.notify_on_finish",    true},
+            {"ui.play_sound_on_finish", true},
             {"ui.sound_volume",        80},
             {"ui.sound_path",          "sounds/done.wav"},
             {"ui.show_preprocess_tab", true},
@@ -1035,8 +1044,13 @@ QMap<QString, QVariant> ConfigManager::defaultScalarValues()
             // ----------------------------------------------------
             // Recognition
             // ----------------------------------------------------
-            {"recognition.language", "eng"},
-            {"recognition.psm",      3},
+            {"recognition.psm", 3},
+
+            // ----------------------------------------------------
+            // OCR (runtime / profiles)
+            // ----------------------------------------------------
+            {"ocr.tessdata_dir", "tessdata"},
+            {"ocr.active_profile", "default"},
 
             // ----------------------------------------------------
             // ODT
@@ -1498,14 +1512,21 @@ bool ConfigManager::validateValueForKey(const QString &fullKey,
         fullKey == "general.ocr_path")
         return true;
 
+
     // --------------------------------------------------------
     // RECOGNITION
     // --------------------------------------------------------
     if (fullKey == "recognition.psm")
         return toInt(0, 13);
 
-    if (fullKey == "recognition.language")
-        return rawValue.length() >= 2;
+    // --------------------------------------------------------
+    // OCR
+    // --------------------------------------------------------
+    if (fullKey == "ocr.tessdata_dir")
+        return !rawValue.trimmed().isEmpty();
+
+    if (fullKey == "ocr.active_profile")
+        return !rawValue.trimmed().isEmpty();
 
     // --------------------------------------------------------
     // ODT

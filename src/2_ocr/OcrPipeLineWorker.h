@@ -50,9 +50,10 @@ public:
     //   mode       — "ram_only" | "disk_only"
     //   debugMode  — global debug switch
     // --------------------------------------------------------
-    void start(const QVector<Ocr::Preprocess::PageJob>& jobs,
+    void start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                const QString& mode,
                bool debug,
+               const QString& languageString,
                const std::atomic_bool *cancelFlag);
 
     void setRunId(uint64_t id) { m_runId = id; }
@@ -102,6 +103,12 @@ private:
     // Cancel token is owned by Controller; Worker only observes it.
     const std::atomic_bool *m_cancelFlag = nullptr;
 
+    // --------------------------------------------------------
+    // RUN invariant:
+    // Language string resolved by Controller ONCE per RUN.
+    // Example: "eng+rus"
+    // --------------------------------------------------------
+    QString m_languageString;
 };
 
 } // namespace Ocr

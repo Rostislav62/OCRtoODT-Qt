@@ -1,0 +1,27 @@
+{
+  "eng": {
+    "name_en": "English",
+    "name_ru": "Английский",
+    "iso639_1": "en"
+  },
+  "rus": {
+    "name_en": "Russian",
+    "name_ru": "Русский",
+    "iso639_1": "ru"
+  },
+  "ron": {
+    "name_en": "Romanian",
+    "name_ru": "Румынский",
+    "iso639_1": "ro"
+  },
+  "bel": {
+    "name_en": "Belarusian",
+    "name_ru": "Белорусский",
+    "iso639_1": "be"
+  },
+  "bul": {
+    "name_en": "Bulgarian",
+    "name_ru": "Болгарский",
+    "iso639_1": "bg"
+  }
+}

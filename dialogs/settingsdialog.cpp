@@ -189,18 +189,25 @@ void SettingsDialog::loadAll()
 // Save panes → ConfigManager
 // ============================================================
 
-void SettingsDialog::saveAll()
+bool SettingsDialog::saveAll()
 {
     LogRouter::instance().debug("[SettingsDialog] saveAll()");
 
     if (m_general)     m_general->save();
     if (m_preproc)     m_preproc->save();
-    if (m_recognition) m_recognition->save();
+
+    if (m_recognition)
+    {
+        if (!m_recognition->save())
+            return false;  // ✅ не закрываем, если валидация не прошла
+    }
+
     if (m_odt)         m_odt->save();
     if (m_interface)   m_interface->save();
     if (m_logging)     m_logging->applyToConfig();
 
     ConfigManager::instance().save();
+    return true;
 }
 
 // ============================================================
@@ -209,7 +216,9 @@ void SettingsDialog::saveAll()
 
 void SettingsDialog::onOk()
 {
-    saveAll();
+    if (!saveAll())
+        return; // ✅ как в Windows
+
     ConfigManager::instance().reload();
 
     LogRouter::instance().info(
@@ -226,6 +235,7 @@ void SettingsDialog::onOk()
 
     accept();
 }
+
 
 // ============================================================
 // Cancel

@@ -20,21 +20,18 @@
 
 #include "2_ocr/OcrPipeLineController.h"
 
-#include <QThread>  // for QThread::currentThread() in shutdownAndWait()
+#include <QThread>      // for QThread::currentThread() in shutdownAndWait()
+#include <QMetaObject>  // for invokeMethod()
 
 #include "core/ConfigManager.h"
 #include "core/LogRouter.h"
 #include "core/RuntimePolicyManager.h"
-
+#include "core/ocr/OcrLanguageManager.h"
 
 using namespace Ocr;
 
 // ------------------------------------------------------------
 // Static singleton instance
-//
-// NOTE:
-// Controller is created by MainWindow.
-// We expose singleton only for coordination (SettingsDialog).
 // ------------------------------------------------------------
 OcrPipelineController* OcrPipelineController::s_instance = nullptr;
 
@@ -44,9 +41,10 @@ OcrPipelineController* OcrPipelineController::s_instance = nullptr;
 OcrPipelineController::OcrPipelineController(QObject *parent)
     : QObject(parent)
 {
+    // --------------------------------------------------------
     // Stage 5 hardening:
     // Do not overwrite singleton if already created.
-    // If this happens, it's a lifecycle bug in app wiring.
+    // --------------------------------------------------------
     if (!s_instance)
     {
         s_instance = this;
@@ -79,15 +77,6 @@ OcrPipelineController::OcrPipelineController(QObject *parent)
 
     // --------------------------------------------------------
     // OCR FINISHED → pipeline becomes idle
-    //
-    // CRITICAL:
-    //   This is the ONLY safe place to apply deferred runtime
-    //   policy (Stage 4.4).
-    //
-    //   We MUST:
-    //       1) Mark m_isRunning = false
-    //       2) Notify RuntimePolicyManager that system is idle
-    //
     // --------------------------------------------------------
     connect(m_worker,
             &OcrPipelineWorker::ocrFinished,
@@ -116,8 +105,9 @@ OcrPipelineController::OcrPipelineController(QObject *parent)
 // ============================================================
 OcrPipelineController::~OcrPipelineController()
 {
-    // Stage 5 hardening:
+    // --------------------------------------------------------
     // Ensure worker is not left running during controller destruction.
+    // --------------------------------------------------------
     if (m_isRunning.load())
     {
         LogRouter::instance().warning(
@@ -126,16 +116,6 @@ OcrPipelineController::~OcrPipelineController()
         m_cancelRequested.store(true);
         shutdownAndWait();
     }
-
-    LogRouter::instance().info(
-        QString("[STATE] run=%1 CTRL event=START_ENTER isRunning=%2")
-            .arg(m_runId)
-            .arg(m_isRunning.load()));
-
-
-
-    // Controller should already be idle here.
-    // Destructor must NOT attempt runtime reapply.
 
     s_instance = nullptr;
 
@@ -151,12 +131,11 @@ OcrPipelineController* OcrPipelineController::instance()
     return s_instance;
 }
 
+// ============================================================
+// EXACTLY-ONCE idle notification barrier
+// ============================================================
 void OcrPipelineController::notifyIdleOnce()
 {
-    // Stage 5 hardening:
-    // EXACTLY-ONCE idle notification barrier.
-    // Prevents double RuntimePolicyManager::onPipelineBecameIdle()
-    // from both worker ocrFinished and shutdownAndWait paths.
     bool expected = false;
     if (!m_idleNotified.compare_exchange_strong(expected, true))
         return;
@@ -167,14 +146,8 @@ void OcrPipelineController::notifyIdleOnce()
     RuntimePolicyManager::onPipelineBecameIdle();
 }
 
-
 // ============================================================
 // Start OCR pipeline
-//
-// Contract:
-//   • May only be called when pipeline is idle.
-//   • Runtime policy must be evaluated BEFORE worker starts.
-//   • Never change runtime policy after m_isRunning = true.
 // ============================================================
 void OcrPipelineController::start(
     const QVector<Ocr::Preprocess::PageJob> &jobs)
@@ -186,11 +159,11 @@ void OcrPipelineController::start(
         return;
     }
 
-    // Stage 5 hardening:
+    // --------------------------------------------------------
     // Reset idle notification barrier for this run.
+    // --------------------------------------------------------
     m_idleNotified.store(false);
 
-    // Defensive guard: starting with empty job list is a logic error.
     if (jobs.isEmpty())
     {
         LogRouter::instance().warning(
@@ -199,10 +172,7 @@ void OcrPipelineController::start(
     }
 
     // --------------------------------------------------------
-    // Stage 4.4 (B)
-    //
     // Re-evaluate runtime policy BEFORE RUN.
-    // If OCR somehow running (should not be), defer.
     // --------------------------------------------------------
     RuntimePolicyManager::requestReapply(false);
 
@@ -214,11 +184,19 @@ void OcrPipelineController::start(
     const bool debugMode =
         cfg.get("general.debug_mode", false).toBool();
 
+    // --------------------------------------------------------
+    // Resolve language string ONCE per RUN (RUN invariant)
+    // --------------------------------------------------------
+    const QString languageString =
+        OcrLanguageManager::instance()
+            .buildTesseractLanguageString();
+
     LogRouter::instance().info(
-        QString("[OcrPipelineController] Starting OCR (jobs=%1, mode=%2, debug=%3)")
+        QString("[OcrPipelineController] Starting OCR (jobs=%1, mode=%2, debug=%3, lang=%4)")
             .arg(jobs.size())
             .arg(mode)
-            .arg(debugMode));
+            .arg(debugMode ? "true" : "false")
+            .arg(languageString));
 
     m_cancelRequested.store(false);
     m_isRunning.store(true);
@@ -233,26 +211,25 @@ void OcrPipelineController::start(
     // --------------------------------------------------------
     QMetaObject::invokeMethod(
         m_worker,
-        [this, jobs, mode, debugMode]()
+        [this, jobs, mode, debugMode, languageString]()
         {
             // --------------------------------------------------------
             // Trace correlation: propagate run id into worker before start
             // --------------------------------------------------------
             m_worker->setRunId(m_runId);
 
-            m_worker->start(jobs, mode, debugMode, &m_cancelRequested);
+            m_worker->start(
+                jobs,
+                mode,
+                debugMode,
+                languageString,
+                &m_cancelRequested);
         },
-        Qt::QueuedConnection
-        );
+        Qt::QueuedConnection);
 }
 
 // ============================================================
 // Cancel OCR pipeline
-//
-// Behavior:
-//   • Sets cancel token
-//   • Waits for worker to finish
-//   • Safe point reached → onPipelineBecameIdle()
 // ============================================================
 void OcrPipelineController::cancel()
 {
@@ -282,17 +259,6 @@ bool OcrPipelineController::isRunning() const
 
 // ============================================================
 // Safe shutdown
-//
-// Guarantees:
-//   • No QtConcurrent future survives
-//   • Worker fully finished
-//   • RuntimePolicyManager is notified via onPipelineBecameIdle()
-//
-// Important:
-//   We DO NOT call RuntimePolicyManager::reapply() directly.
-//   We only notify idle state.
-//
-//   Actual reapply decision belongs to RuntimePolicyManager.
 // ============================================================
 void OcrPipelineController::shutdownAndWait()
 {
@@ -303,9 +269,9 @@ void OcrPipelineController::shutdownAndWait()
     if (!m_worker)
         return;
 
-    // Stage 5 hardening:
-    // Even if m_isRunning already false (race: finished signal already handled),
-    // we still call notifyIdleOnce() to guarantee deterministic idle notification.
+    // --------------------------------------------------------
+    // Even if already not running — guarantee deterministic idle notification.
+    // --------------------------------------------------------
     if (!m_isRunning.load())
     {
         notifyIdleOnce();
@@ -317,12 +283,10 @@ void OcrPipelineController::shutdownAndWait()
     // --------------------------------------------------------
     if (m_worker->thread() == QThread::currentThread())
     {
-        // Same thread → direct wait
         m_worker->waitForFinished();
     }
     else
     {
-        // Cross-thread blocking wait
         QMetaObject::invokeMethod(
             m_worker,
             &OcrPipelineWorker::waitForFinished,
@@ -334,7 +298,6 @@ void OcrPipelineController::shutdownAndWait()
     LogRouter::instance().info(
         "[OcrPipelineController] shutdown complete -> pipeline idle.");
 
-    // Stage 5 hardening: exactly-once idle notify
     notifyIdleOnce();
 
     LogRouter::instance().info(

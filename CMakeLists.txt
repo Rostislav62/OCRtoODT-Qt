@@ -445,6 +445,12 @@ add_executable(OCRtoODT
     src/core/ThreadPoolGuard.cpp
     src/core/RuntimePolicyManager.h
     src/core/RuntimePolicyManager.cpp
+    src/core/ocr/LanguageMeta.h
+    src/core/ocr/OcrProfileStorage.h
+    src/core/ocr/OcrProfileStorage.cpp
+    src/core/ocr/OcrLanguageManager.h
+    src/core/ocr/OcrLanguageManager.cpp
+    resources/ocr_languages/ocr_languages.json
 )
 
 # ============================================================

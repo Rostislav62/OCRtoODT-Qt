@@ -5,10 +5,19 @@
 //  Responsibility:
 //      STEP 2 — OCR execution worker (RAM-first).
 //
-//      Guarantees:
-//          • Stable mapping by globalIndex
-//          • RAM is source of truth
-//          • Disk output ONLY in debug / disk_only
+//  Architecture:
+//      • Receives normalized PageJob list from Controller
+//      • Executes OCR per page in parallel (QtConcurrent)
+//      • Collects results in deterministic globalIndex order
+//      • NEVER reads ConfigManager for languages
+//      • Language string is RUN invariant (injected by Controller)
+//
+//  Guarantees:
+//      • Stable mapping by globalIndex
+//      • RAM is source of truth
+//      • Disk output ONLY inside OcrPageWorker if required
+//      • Safe cooperative cancellation
+//      • Deterministic finish semantics
 //
 // ============================================================
 
@@ -16,9 +25,7 @@
 
 #include <QtConcurrent>
 #include <QFutureWatcher>
-#include <QDir>
-#include <QFile>
-#include <QTextStream>
+#include <QThread>
 
 #include "core/LogRouter.h"
 #include "2_ocr/OcrPageWorker.h"
@@ -36,26 +43,29 @@ OcrPipelineWorker::OcrPipelineWorker(QObject *parent)
 // ------------------------------------------------------------
 // Start OCR pipeline (STEP 2)
 // ------------------------------------------------------------
-void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
-                              const QString& mode,
-                              bool debug,
-                              const std::atomic_bool *cancelFlag)
+void OcrPipelineWorker::start(
+    const QVector<Ocr::Preprocess::PageJob> &jobs,
+    const QString& mode,
+    bool debug,
+    const QString& languageString,
+    const std::atomic_bool *cancelFlag)
 {
     LogRouter::instance().info(
         QString("[STATE] run=%1 WORKER event=START pages=%2")
             .arg(m_runId)
             .arg(jobs.size()));
 
-
-    m_jobs      = jobs;
-    m_mode      = mode;
-    m_debugMode = debug;
-
-    m_cancelFlag = cancelFlag;
+    // --------------------------------------------------------
+    // Store RUN invariants
+    // --------------------------------------------------------
+    m_jobs           = jobs;
+    m_mode           = mode;
+    m_debugMode      = debug;
+    m_languageString = languageString;   // CRITICAL: resolved by Controller
+    m_cancelFlag     = cancelFlag;
 
     // --------------------------------------------------------
-    // Defensive: never overlap futures.
-    // If a previous run is still finishing, request cancel and wait.
+    // Defensive: prevent overlapping futures
     // --------------------------------------------------------
     if (m_future.isRunning())
     {
@@ -67,7 +77,6 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
     }
 
     const int total = m_jobs.size();
-
 
     if (total == 0)
     {
@@ -83,13 +92,17 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
     }
 
     LogRouter::instance().info(
-        QString("[OcrPipelineWorker] OCR started. Pages=%1 Mode=%2 Debug=%3")
+        QString("[OcrPipelineWorker] OCR started. Pages=%1 Mode=%2 Debug=%3 Lang=%4")
             .arg(total)
             .arg(m_mode)
-            .arg(m_debugMode));
+            .arg(m_debugMode ? "true" : "false")
+            .arg(m_languageString));
 
     // =========================================================
     // STEP 2A — normalize jobs by globalIndex (CRITICAL)
+    //
+    // Guarantee deterministic index mapping even if input order
+    // was altered upstream.
     // =========================================================
     QVector<Ocr::Preprocess::PageJob> jobsByIndex;
     jobsByIndex.resize(total);
@@ -110,12 +123,18 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
     }
 
     // =========================================================
-    // STEP 2B — OCR per page (PARALLEL)
+    // STEP 2B — Parallel OCR execution
+    //
+    // IMPORTANT:
+    //   • Worker NEVER resolves languages itself.
+    //   • PageWorker receives languageString directly.
     // =========================================================
     auto lambdaOcr =
         [this](const Ocr::Preprocess::PageJob &job) -> OcrPageResult
     {
-        // Fast exit if cancelled before starting this job
+        // ----------------------------------------------------
+        // Fast exit if cancelled before processing this page
+        // ----------------------------------------------------
         if (m_cancelFlag && m_cancelFlag->load())
         {
             OcrPageResult r;
@@ -125,18 +144,20 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
             return r;
         }
 
-        // Cooperative cancel inside page worker too
-        return OcrPageWorker::run(job, m_cancelFlag);
+        return OcrPageWorker::run(
+            job,
+            m_languageString,
+            m_cancelFlag);
     };
 
-
-
     m_future = QtConcurrent::mapped(jobsByIndex, lambdaOcr);
-
 
     QFutureWatcher<OcrPageResult> *watcher =
         new QFutureWatcher<OcrPageResult>(this);
 
+    // --------------------------------------------------------
+    // Progress reporting
+    // --------------------------------------------------------
     connect(watcher,
             &QFutureWatcher<OcrPageResult>::progressValueChanged,
             this,
@@ -145,7 +166,13 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                 emit ocrProgress(value, total);
             });
 
-    // File: src/2_ocr/OcrPipeLineWorker.cpp
+    // --------------------------------------------------------
+    // Finish handler
+    //
+    // CRITICAL:
+    //   After cancel(), future may produce fewer results
+    //   than total pages.
+    // =========================================================
     connect(watcher,
             &QFutureWatcher<OcrPageResult>::finished,
             this,
@@ -153,13 +180,12 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
             {
                 const QFuture<OcrPageResult> future = watcher->future();
 
-                // --------------------------------------------------------
-                // Build default page array first (all failed by default).
-                // We MUST NOT assume future has 'total' results after cancel().
-                // --------------------------------------------------------
                 QVector<Core::VirtualPage> pages;
                 pages.resize(total);
 
+                // ------------------------------------------------
+                // Initialize all pages as failed by default
+                // ------------------------------------------------
                 for (int gi = 0; gi < total; ++gi)
                 {
                     Core::VirtualPage vp = jobsByIndex[gi].vp;
@@ -171,10 +197,6 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                 int okCount   = 0;
                 int failCount = 0;
 
-                // --------------------------------------------------------
-                // Collect only produced results.
-                // NOTE: after cancel(), resultCount() may be < total.
-                // --------------------------------------------------------
                 const QList<OcrPageResult> results = future.results();
 
                 LogRouter::instance().info(
@@ -183,7 +205,9 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                         .arg(results.size())
                         .arg(total));
 
-
+                // ------------------------------------------------
+                // Merge produced results
+                // ------------------------------------------------
                 for (const OcrPageResult &r : results)
                 {
                     const int gi = r.globalIndex;
@@ -191,7 +215,7 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                     if (gi < 0 || gi >= total)
                         continue;
 
-                    Core::VirtualPage vp = pages[gi]; // already has base VP
+                    Core::VirtualPage vp = pages[gi];
                     vp.ocrSuccess = r.success;
 
                     if (r.success)
@@ -207,11 +231,14 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                     pages[gi] = vp;
                 }
 
-                // --------------------------------------------------------
-                // If cancellation happened — do NOT treat as success.
-                // We only notify finish, but do NOT emit completed result.
-                // --------------------------------------------------------
-                if ((m_cancelFlag && m_cancelFlag->load()) || future.isCanceled())
+                // ------------------------------------------------
+                // CANCELED path
+                //
+                // We DO NOT emit ocrCompleted() here.
+                // Controller will handle idle transition.
+                // ------------------------------------------------
+                if ((m_cancelFlag && m_cancelFlag->load()) ||
+                    future.isCanceled())
                 {
                     LogRouter::instance().warning(
                         QString("[OcrPipelineWorker] OCR finished in CANCELED state. produced=%1 total=%2 ok=%3 fail=%4")
@@ -220,53 +247,45 @@ void OcrPipelineWorker::start(const QVector<Ocr::Preprocess::PageJob> &jobs,
                             .arg(okCount)
                             .arg(failCount));
 
-                    emit ocrFinished();        // stage finished
+                    emit ocrFinished();
                     watcher->deleteLater();
-                    return;                    // 🚨 EXIT — DO NOT emit ocrCompleted
+                    return;
                 }
 
-                // --------------------------------------------------------
-                // Normal completion path
-                // --------------------------------------------------------
+                // ------------------------------------------------
+                // NORMAL completion path
+                // ------------------------------------------------
                 emit ocrFinished();
                 emit ocrCompleted(pages);
 
                 watcher->deleteLater();
-
             });
-
 
     watcher->setFuture(m_future);
 }
 
+// ------------------------------------------------------------
+// Cancel (cooperative)
+// ------------------------------------------------------------
 void OcrPipelineWorker::cancel()
 {
-    // --------------------------------------------------------
-    // Cooperative cancel request.
-    // NOTE:
-    //  - OcrPipelineController already invokes this slot via QueuedConnection,
-    //    so this code normally executes in the worker thread.
-    //  - We do NOT block/wait here. We only request cancellation.
-    // --------------------------------------------------------
-    LogRouter::instance().warning("[OcrPipelineWorker] cancel() requested");
+    LogRouter::instance().warning(
+        "[OcrPipelineWorker] cancel() requested");
 
-
-    // NOTE:
-    // Cancel token is owned by Controller. We only cancel the future here.
-    // QtConcurrent cancellation is cooperative (not immediate).
     if (m_future.isRunning())
         m_future.cancel();
 
     emit ocrMessage(tr("Cancellation requested..."));
 }
 
+// ------------------------------------------------------------
+// Safe shutdown wait
+//
+// Guarantees:
+//   • No QtConcurrent task survives object destruction
+// ------------------------------------------------------------
 void OcrPipelineWorker::waitForFinished()
 {
-    // --------------------------------------------------------
-    // STEP 4.2 — Safe shutdown wait.
-    // QtConcurrent cancellation is cooperative; this call ensures
-    // all tasks have completed before object destruction.
-    // --------------------------------------------------------
     if (m_future.isRunning())
     {
         LogRouter::instance().info(

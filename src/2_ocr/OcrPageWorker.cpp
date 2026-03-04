@@ -6,24 +6,17 @@
 //      Execute OCR for ONE page using prepared preprocessing output.
 //
 //  IMPORTANT:
-//      • Multipass TSV is produced in RAM (no per-pass temp files).
-//      • This worker NEVER decides RAM vs DISK for IMAGE source.
-//      • It MUST strictly follow PageJob contract.
+//      • Multipass TSV is produced in RAM.
+//      • Language is injected (RUN invariant) — no config reads for language.
+//      • Uses cooperative cancel checks before heavy steps.
 //
-//  Transitional note (this step):
-//      • Worker still writes ONE final TSV to disk to keep the rest
-//        of the pipeline working unchanged.
-//      • Next step will move this final TSV handoff to RAM contract
-//        at OcrPipelineWorker level.
 // ============================================================
 
 #include "2_ocr/OcrPageWorker.h"
 
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QTextStream>
-#include <QCoreApplication>
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgcodecs.hpp>
@@ -32,12 +25,47 @@
 
 #include "core/ConfigManager.h"
 #include "core/LogRouter.h"
+#include "core/ocr/OcrLanguageManager.h"
 
 #include "2_ocr/OcrPassConfig.h"
 #include "2_ocr/OcrTsvQuality.h"
 #include "2_ocr/OcrMultipassSelector.h"
 
 using namespace Ocr;
+
+// ============================================================
+// Helper: sanitize TSV (decimal comma → dot in confidence column)
+// ============================================================
+static QString sanitizeTsvConf(const QString &tsv)
+{
+    if (tsv.isEmpty())
+        return tsv;
+
+    QString out;
+    out.reserve(tsv.size());
+
+    const QStringList lines = tsv.split('\n', Qt::KeepEmptyParts);
+
+    for (const QString &ln : lines)
+    {
+        if (ln.isEmpty())
+        {
+            out += '\n';
+            continue;
+        }
+
+        QStringList cols = ln.split('\t', Qt::KeepEmptyParts);
+
+        // Column 10 is confidence (Tesseract TSV format)
+        if (cols.size() >= 11 && cols[10].contains(','))
+            cols[10].replace(',', '.');
+
+        out += cols.join('\t');
+        out += '\n';
+    }
+
+    return out;
+}
 
 // ============================================================
 // Build FINAL TSV path (always under cache/)
@@ -58,82 +86,78 @@ QString OcrPageWorker::buildTsvPath(int globalIndex)
 }
 
 // ============================================================
-// Helper: sanitize TSV (decimal comma → dot in conf column)
+// Convenience wrapper: no cancel
 // ============================================================
-static QString sanitizeTsvConf(const QString &tsv)
+OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
+                                 const QString &languageString)
 {
-    if (tsv.isEmpty())
-        return tsv;
-
-    QString out;
-    out.reserve(tsv.size());
-
-    const QStringList lines =
-        tsv.split('\n', Qt::KeepEmptyParts);
-
-    for (const QString &ln : lines)
-    {
-        if (ln.isEmpty())
-        {
-            out += '\n';
-            continue;
-        }
-
-        QStringList cols =
-            ln.split('\t', Qt::KeepEmptyParts);
-
-        // Column 10 is confidence
-        if (cols.size() >= 11 && cols[10].contains(','))
-            cols[10].replace(',', '.');
-
-        out += cols.join('\t');
-        out += '\n';
-    }
-
-    return out;
-}
-
-// ============================================================
-// Perform OCR for ONE page (wrapper without cancel)
-// ============================================================
-OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job)
-{
-    return run(job, nullptr);
+    return run(job, languageString, nullptr);
 }
 
 // ============================================================
 // Perform OCR for ONE page (cooperative cancel version)
+//
+// languageString:
+//   MUST be non-empty and already in Tesseract format: "eng+rus"
+//
+// NOTE:
+//   This function does NOT decide which languages to use.
+//   It only executes OCR with the injected language string.
 // ============================================================
 OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
+                                 const QString &languageString,
                                  const std::atomic_bool *cancelFlag)
 {
     // --------------------------------------------------------
-    // Entry log — confirms contract inputs
+    // Result init (fail by default)
+    // --------------------------------------------------------
+    OcrPageResult result;
+    result.globalIndex = job.globalIndex;
+    result.success = false;
+    result.tsvText.clear();
+    result.errorMessage.clear();
+
+    auto canceled = [&]() -> bool
+    {
+        return cancelFlag && cancelFlag->load();
+    };
+
+    // --------------------------------------------------------
+    // Entry log
     // --------------------------------------------------------
     LogRouter::instance().info(
-        QString("[OcrPageWorker] START page=%1 keepInRam=%2 enhancedMat=%3 enhancedPath='%4' ocrDpi=%5")
+        QString("[OcrPageWorker] START page=%1 keepInRam=%2 enhancedMat=%3 enhancedPath='%4' dpi=%5 lang='%6'")
             .arg(job.globalIndex)
             .arg(job.keepInRam ? "true" : "false")
             .arg(job.enhancedMat.empty() ? "EMPTY" : "OK")
             .arg(job.enhancedPath)
-            .arg(job.ocrDpi));
+            .arg(job.ocrDpi)
+            .arg(languageString));
 
-    OcrPageResult result;
-    result.globalIndex = job.globalIndex;
-
-    // --------------------------------------------------------
-    // Early cancel check (before any heavy work)
-    // --------------------------------------------------------
-    if (cancelFlag && cancelFlag->load())
+    // Early cancel
+    if (canceled())
     {
         LogRouter::instance().info(
-            QString("[OcrPageWorker] CANCELLED before processing page=%1")
+            QString("[OcrPageWorker] CANCELLED early page=%1").arg(job.globalIndex));
+        return result;
+    }
+
+    // --------------------------------------------------------
+    // Validate language (RUN invariant)
+    // --------------------------------------------------------
+    const QString languages = languageString.trimmed();
+    if (languages.isEmpty())
+    {
+        LogRouter::instance().error(
+            QString("[OcrPageWorker] Page %1: languageString EMPTY (contract violation)")
                 .arg(job.globalIndex));
+
+        result.errorMessage = QString("languageString empty for page %1").arg(job.globalIndex);
         return result;
     }
 
     // =========================================================
-    // 1) INPUT IMAGE (CONTRACT-DRIVEN)
+    // 1) Acquire input image (CONTRACT-DRIVEN)
     // =========================================================
     cv::Mat gray;
 
@@ -147,21 +171,19 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
     }
     else
     {
-        if (job.enhancedPath.trimmed().isEmpty())
+        const QString path = job.enhancedPath.trimmed();
+
+        if (path.isEmpty())
         {
             LogRouter::instance().error(
                 QString("[OcrPageWorker] Page %1: enhancedPath EMPTY (contract violation)")
                     .arg(job.globalIndex));
 
-            result.errorMessage =
-                QString("enhancedPath empty for page %1").arg(job.globalIndex);
+            result.errorMessage = QString("enhancedPath empty for page %1").arg(job.globalIndex);
             return result;
         }
 
-        // --------------------------------------------------------
-        // Cancel check BEFORE disk read (heavy I/O)
-        // --------------------------------------------------------
-        if (cancelFlag && cancelFlag->load())
+        if (canceled())
         {
             LogRouter::instance().info(
                 QString("[OcrPageWorker] CANCELLED before disk load page=%1")
@@ -169,60 +191,46 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
             return result;
         }
 
-        gray = cv::imread(job.enhancedPath.toStdString(),
-                          cv::IMREAD_GRAYSCALE);
+        gray = cv::imread(path.toStdString(), cv::IMREAD_GRAYSCALE);
 
         LogRouter::instance().info(
             QString("[OcrPageWorker] Page %1: using enhancedPath (DISK) '%2'")
                 .arg(job.globalIndex)
-                .arg(job.enhancedPath));
+                .arg(path));
     }
 
+    // Validate Gray8 image
     if (gray.empty() || gray.type() != CV_8UC1)
     {
         LogRouter::instance().error(
             QString("[OcrPageWorker] Page %1: invalid Gray8 input")
                 .arg(job.globalIndex));
 
-        result.errorMessage =
-            QString("Invalid Gray8 input for page %1").arg(job.globalIndex);
+        result.errorMessage = QString("Invalid Gray8 input for page %1").arg(job.globalIndex);
         return result;
     }
 
-    // --------------------------------------------------------
-    // Cancel check after image acquisition
-    // --------------------------------------------------------
-    if (cancelFlag && cancelFlag->load())
+    if (canceled())
     {
         LogRouter::instance().info(
-            QString("[OcrPageWorker] CANCELLED after image load page=%1")
+            QString("[OcrPageWorker] CANCELLED after image acquire page=%1")
                 .arg(job.globalIndex));
-        OcrPageResult r;
-        r.globalIndex = job.globalIndex;
-        r.success = false;
-        r.tsvText.clear();
-        return r;
+        return result;
     }
 
     // =========================================================
-    // 2) OCR CONFIGURATION
+    // 2) Read OCR engine parameters (NOT languages)
     // =========================================================
     ConfigManager &cfg = ConfigManager::instance();
 
-    const QString languages =
-        cfg.get("ocr.languages", "eng")
-            .toString()
-            .split(',', Qt::SkipEmptyParts)
-            .join('+');
-
     const int oem = cfg.get("ocr.tesseract_oem", 1).toInt();
-    const int dpi = job.ocrDpi;
+    const int dpi = job.ocrDpi > 0 ? job.ocrDpi : cfg.get("ocr.dpi_default", 300).toInt();
 
     // ---------------------------------------------------------
-    // Controlled multipass configuration
+    // Multipass PSM list
+    // Reads keys: ocr.psm_1, ocr.psm_2, ...
     // ---------------------------------------------------------
     QList<int> psmList;
-
     for (int i = 1; ; ++i)
     {
         const QString key = QString("ocr.psm_%1").arg(i);
@@ -234,28 +242,31 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         bool ok = false;
         const int psm = v.toInt(&ok);
 
-        if (!ok || psm < 0 || psm > 13)
-            continue;
-
-        psmList << psm;
+        // Tesseract valid PageSegMode values commonly 0..13
+        if (ok && psm >= 0 && psm <= 13)
+            psmList << psm;
     }
 
     if (psmList.isEmpty())
-        psmList << 4;
+        psmList << 4; // safe default
 
+
+    const QString tessdataDir =
+        OcrLanguageManager::instance().resolvedTessdataDir();
+
+    // =========================================================
+    // 3) Multi-pass OCR loop
+    // =========================================================
     QList<OcrPassResult> passResults;
 
-    // =========================================================
-    // 3) MULTI-PASS OCR LOOP (HEAVY SECTION)
-    // =========================================================
     for (int psm : psmList)
     {
-        // Cooperative cancel before each pass
-        if (cancelFlag && cancelFlag->load())
+        if (canceled())
         {
             LogRouter::instance().info(
-                QString("[OcrPageWorker] CANCELLED during multipass page=%1")
-                    .arg(job.globalIndex));
+                QString("[OcrPageWorker] CANCELLED before pass page=%1 psm=%2")
+                    .arg(job.globalIndex)
+                    .arg(psm));
             return result;
         }
 
@@ -266,47 +277,37 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         pass.config.oem       = oem;
         pass.config.dpi       = dpi;
 
-        // --------------------------------------------------------
-        // Cancel check BEFORE TessBaseAPI init (heavy)
-        // --------------------------------------------------------
-        if (cancelFlag && cancelFlag->load())
-        {
-            LogRouter::instance().info(
-                QString("[OcrPageWorker] CANCELLED before Tess init page=%1")
-                    .arg(job.globalIndex));
-            return result;
-        }
-
         tesseract::TessBaseAPI api;
 
-        // --------------------------------------------------------
-        // Cancel check BEFORE api.Init
-        // --------------------------------------------------------
-        if (cancelFlag && cancelFlag->load())
-        {
-            LogRouter::instance().info(
-                QString("[OcrPageWorker] CANCELLED before api.Init page=%1")
-                    .arg(job.globalIndex));
-            return result;
-        }
+        // ---------------------------------------------------------
+        // Explicit tessdata datapath (parent of "tessdata")
+        // ---------------------------------------------------------
+        const QString tessdataDir =
+            OcrLanguageManager::instance().resolvedTessdataDir();
 
-        if (api.Init(nullptr,
-                     languages.toUtf8().constData(),
+        const QString datapath = tessdataDir;
+        const QByteArray datapathBytes = datapath.toUtf8();
+        const QByteArray langBytes     = languages.toUtf8();
+
+        // Init Tesseract
+        if (api.Init(datapathBytes.constData(),
+                     langBytes.constData(),
                      static_cast<tesseract::OcrEngineMode>(oem)) != 0)
         {
+            LogRouter::instance().warning(
+                QString("[OcrPageWorker] Page %1: api.Init failed (datapath='%2', lang='%3', oem=%4)")
+                    .arg(job.globalIndex)
+                    .arg(datapath)
+                    .arg(languages)
+                    .arg(oem));
             continue;
         }
 
-        api.SetPageSegMode(
-            static_cast<tesseract::PageSegMode>(psm));
+        // DPI hint (string must remain valid during call)
+        const QByteArray dpiBytes = QByteArray::number(dpi);
+        api.SetVariable("user_defined_dpi", dpiBytes.constData());
 
-        api.SetVariable("user_defined_dpi",
-                        QByteArray::number(dpi).constData());
-
-        // --------------------------------------------------------
-        // Cancel check BEFORE SetImage
-        // --------------------------------------------------------
-        if (cancelFlag && cancelFlag->load())
+        if (canceled())
         {
             LogRouter::instance().info(
                 QString("[OcrPageWorker] CANCELLED before SetImage page=%1")
@@ -320,10 +321,7 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
                      1,
                      static_cast<int>(gray.step));
 
-        // --------------------------------------------------------
-        // Cancel check BEFORE GetTSVText (very heavy call)
-        // --------------------------------------------------------
-        if (cancelFlag && cancelFlag->load())
+        if (canceled())
         {
             LogRouter::instance().info(
                 QString("[OcrPageWorker] CANCELLED before GetTSVText page=%1")
@@ -331,20 +329,23 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
             return result;
         }
 
+        // Heavy OCR call
         char *raw = api.GetTSVText(0);
-
         if (!raw)
+        {
+            LogRouter::instance().warning(
+                QString("[OcrPageWorker] Page %1: GetTSVText returned NULL (psm=%2)")
+                    .arg(job.globalIndex)
+                    .arg(psm));
             continue;
+        }
 
         const QString tsvRaw = QString::fromUtf8(raw);
         delete [] raw;
 
         pass.tsvText = sanitizeTsvConf(tsvRaw);
 
-        // --------------------------------------------------------
-        // Cancel check BEFORE quality analysis
-        // --------------------------------------------------------
-        if (cancelFlag && cancelFlag->load())
+        if (canceled())
         {
             LogRouter::instance().info(
                 QString("[OcrPageWorker] CANCELLED before quality analysis page=%1")
@@ -353,25 +354,25 @@ OcrPageResult OcrPageWorker::run(const Ocr::Preprocess::PageJob &job,
         }
 
         pass.quality = analyzeTsvQualityFromText(pass.tsvText);
-
         passResults << pass;
     }
 
     if (passResults.isEmpty())
     {
-        result.errorMessage =
-            QString("OCR failed for page %1").arg(job.globalIndex);
+        LogRouter::instance().error(
+            QString("[OcrPageWorker] FAIL page=%1: no successful passes").arg(job.globalIndex));
+
+        result.errorMessage = QString("OCR failed for page %1").arg(job.globalIndex);
         return result;
     }
 
     // =========================================================
-    // 4) SELECT BEST PASS
+    // 4) Select best pass
     // =========================================================
-    const OcrPassResult best =
-        selectBestOcrPass(passResults);
+    const OcrPassResult best = selectBestOcrPass(passResults);
 
     // =========================================================
-    // 5) FINAL RESULT
+    // 5) Produce result in RAM
     // =========================================================
     result.success = true;
     result.tsvText = best.tsvText;

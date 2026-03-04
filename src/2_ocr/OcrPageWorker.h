@@ -3,47 +3,53 @@
 //  File: src/2_ocr/OcrPageWorker.h
 //
 //  Responsibility:
-//      Perform OCR for a single preprocessed page (STEP 2).
+//      Execute OCR for ONE page using preprocessing output.
 //
-//  Input:
-//      • Ocr::Preprocess::PageJob (contract-driven)
+//  CONTRACT RULES:
+//      • Input image must be obtained strictly from PageJob:
+//          - if keepInRam: enhancedMat must be valid Gray8
+//          - else: enhancedPath must point to Gray8 image on disk
+//      • Language selection is NOT read from ConfigManager.
+//        It is injected by caller as "eng+rus" etc.
+//      • Cancellation is cooperative via cancelFlag.
 //
-//  Output:
-//      • OcrPageResult (success + final TSV path)
-//
-//  Contract (IMPORTANT):
-//      • This worker does NOT decide RAM vs DISK for IMAGE source.
-//      • It MUST execute STEP 1 decision:
-//            job.keepInRam == true  → use enhancedMat
-//            job.keepInRam == false → load grayscale from enhancedPath
-//
-//  Transitional disk I/O note (current step):
-//      • Per-pass TSV temp files are no longer written.
-//      • Worker writes only ONE final TSV (best pass).
-//      • Full RAM-only TSV handoff will be done next at pipeline level.
 // ============================================================
 
-#ifndef OCR_PAGE_WORKER_H
-#define OCR_PAGE_WORKER_H
+#pragma once
+
+#include <QString>
+#include <atomic>
 
 #include "1_preprocess/PageJob.h"
 #include "2_ocr/OcrResult.h"
-#include <atomic>
 
 namespace Ocr {
 
 class OcrPageWorker
 {
 public:
-    static OcrPageResult run(const Ocr::Preprocess::PageJob &job);
-
-    static OcrPageResult run(const Ocr::Preprocess::PageJob &job,
-                             const std::atomic_bool *cancelFlag);
-
-private:
+    // --------------------------------------------------------
+    // Disk output path for legacy TSV caching (debug / compatibility)
+    // --------------------------------------------------------
     static QString buildTsvPath(int globalIndex);
+
+    // --------------------------------------------------------
+    // Convenience wrapper: no cancellation
+    // --------------------------------------------------------
+    static OcrPageResult run(const Ocr::Preprocess::PageJob &job,
+                             const QString &languageString);
+
+    // --------------------------------------------------------
+    // Main worker entry (cooperative cancel)
+    //
+    // languageString:
+    //   Tesseract format: "eng+rus"
+    // cancelFlag:
+    //   owned by Controller; may be null
+    // --------------------------------------------------------
+    static OcrPageResult run(const Ocr::Preprocess::PageJob &job,
+                             const QString &languageString,
+                             const std::atomic_bool *cancelFlag);
 };
 
 } // namespace Ocr
-
-#endif // OCR_PAGE_WORKER_H

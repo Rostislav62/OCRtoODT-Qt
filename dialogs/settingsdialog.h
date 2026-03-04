@@ -5,17 +5,6 @@
 //  Responsibility:
 //      Central dialog hosting all application settings panes.
 //
-//      Responsibilities:
-//          • Creates and owns all settings panes
-//          • Synchronizes panes with ConfigManager
-//          • Applies UI-related changes immediately
-//          • Reapplies runtime policy safely (when OCR is idle)
-//
-//      This class does NOT:
-//          • Perform OCR logic
-//          • Modify worker threads directly
-//          • Access internal pipeline state
-//
 // ============================================================
 
 #ifndef SETTINGSDIALOG_H
@@ -63,7 +52,7 @@ private:
     LoggingPane             *m_logging     = nullptr;
 
     void loadAll();
-    void saveAll();
+    bool saveAll();   // ✅ как в Windows
 };
 
 #endif // SETTINGSDIALOG_H

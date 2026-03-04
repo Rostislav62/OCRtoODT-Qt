@@ -6,27 +6,190 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>324</width>
-    <height>384</height>
+    <width>520</width>
+    <height>520</height>
    </rect>
   </property>
+
   <layout class="QVBoxLayout" name="layoutRecognition">
+
+   <!-- ===================================================== -->
+   <!-- OCR LANGUAGES HEADER -->
+   <!-- ===================================================== -->
    <item>
     <widget class="QLabel" name="lblOCRLanguages">
      <property name="text">
-      <string>OCR languages:</string>
+      <string>OCR Languages</string>
+     </property>
+     <property name="styleSheet">
+      <string>font-weight: bold;</string>
      </property>
     </widget>
    </item>
+
+   <!-- ===================================================== -->
+   <!-- PROFILE ROW -->
+   <!-- ===================================================== -->
    <item>
-    <widget class="QListWidget" name="listOCRLanguages">
-     <property name="selectionMode">
-      <enum>QAbstractItemView::SelectionMode::MultiSelection</enum>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="layoutProfiles">
+     <item>
+      <widget class="QLabel" name="lblProfile">
+       <property name="text">
+        <string>Profile:</string>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <widget class="QComboBox" name="comboProfiles"/>
+     </item>
+
+     <item>
+      <widget class="QPushButton" name="btnAddProfile">
+       <property name="text">
+        <string>Add Profile</string>
+       </property>
+       <property name="minimumWidth">
+        <number>32</number>
+       </property>
+      </widget>
+     </item>
+
+     <item>
+      <widget class="QPushButton" name="btnDeleteProfile">
+       <property name="text">
+        <string>Delete Profile</string>
+       </property>
+       <property name="minimumWidth">
+        <number>32</number>
+       </property>
+      </widget>
+     </item>
+	 
+     <item>
+      <widget class="QPushButton" name="btnRenameProfile">
+       <property name="text">
+        <string>Rename Profile</string>
+       </property>
+       <property name="minimumWidth">
+        <number>32</number>
+       </property>
+      </widget>
+     </item>
+	 
+    </layout>
    </item>
+
+   <!-- ===================================================== -->
+   <!-- DUAL LIST LAYOUT -->
+   <!-- ===================================================== -->
+   <item>
+    <layout class="QHBoxLayout" name="layoutDualLists">
+
+     <!-- Available Languages -->
+     <item>
+      <layout class="QVBoxLayout" name="layoutAvailable">
+       <item>
+        <widget class="QLabel" name="lblAvailable">
+         <property name="text">
+          <string>Available Languages</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listAvailableLanguages">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ExtendedSelection</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+
+     <!-- Arrow Buttons -->
+     <item>
+      <layout class="QVBoxLayout" name="layoutArrows">
+       <item>
+        <spacer name="spacerTop">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+
+       <item>
+        <widget class="QPushButton" name="btnLangAdd">
+         <property name="text">
+          <string>→</string>
+         </property>
+         <property name="minimumWidth">
+          <number>40</number>
+         </property>
+        </widget>
+       </item>
+
+       <item>
+        <widget class="QPushButton" name="btnLangRemove">
+         <property name="text">
+          <string>←</string>
+         </property>
+         <property name="minimumWidth">
+          <number>40</number>
+         </property>
+        </widget>
+       </item>
+
+       <item>
+        <spacer name="spacerBottom">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+
+     <!-- Active Languages -->
+     <item>
+      <layout class="QVBoxLayout" name="layoutActive">
+       <item>
+        <widget class="QLabel" name="lblActive">
+         <property name="text">
+          <string>Active Languages</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="listActiveLanguages">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::ExtendedSelection</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+
+    </layout>
+   </item>
+
+   <!-- ===================================================== -->
+   <!-- LANGUAGE MANAGEMENT BUTTONS -->
+   <!-- ===================================================== -->
    <item>
     <layout class="QHBoxLayout" name="layoutLanguageButtons">
+
      <item>
       <widget class="QPushButton" name="btnRefreshLanguages">
        <property name="text">
@@ -34,6 +197,7 @@
        </property>
       </widget>
      </item>
+
      <item>
       <widget class="QPushButton" name="btnAddLanguage">
        <property name="text">
@@ -41,15 +205,24 @@
        </property>
       </widget>
      </item>
+
     </layout>
    </item>
+
+   <!-- ===================================================== -->
+   <!-- AFTER OCR SETTINGS -->
+   <!-- ===================================================== -->
    <item>
     <widget class="QLabel" name="lblAfterOCR">
      <property name="text">
       <string>After OCR:</string>
      </property>
+     <property name="styleSheet">
+      <string>font-weight: bold;</string>
+     </property>
     </widget>
    </item>
+
    <item>
     <widget class="QCheckBox" name="chkNotifyOnFinish">
      <property name="text">
@@ -57,6 +230,7 @@
      </property>
     </widget>
    </item>
+
    <item>
     <widget class="QCheckBox" name="chkSoundOnFinish">
      <property name="text">
@@ -64,6 +238,7 @@
      </property>
     </widget>
    </item>
+
    <item>
     <layout class="QHBoxLayout" name="layoutSoundTest">
      <item>
@@ -85,12 +260,13 @@
         <number>70</number>
        </property>
        <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
+        <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
     </layout>
    </item>
+
   </layout>
  </widget>
  <resources/>
