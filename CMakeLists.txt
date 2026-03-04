@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(OCRtoODT VERSION 3.0.2 LANGUAGES CXX)
+project(OCRtoODT VERSION 3.0.3 LANGUAGES CXX)
 
 # ------------------------------------------------------------
 # Application version (available in C++ as APP_VERSION)
