@@ -283,12 +283,17 @@ export PATH="$PWD/.tools:${PATH}"
 info "Packaging AppImage via linuxdeploy..."
 unset QML2_IMPORT_PATH QML_IMPORT_PATH QT_PLUGIN_PATH
 
-  --appdir "$APPDIR" \
-  --executable "$APPDIR/usr/bin/$APP" \
-  --desktop-file "$APPDIR/usr/share/applications/OCRtoODT.desktop" \
-  --icon-file "$ICON_FILE_SRC" \
-  --plugin qt \
+cmd=( "$LINUXDEPLOY"
+  --appdir "$APPDIR"
+  --executable "$APPDIR/usr/bin/$APP"
+  --desktop-file "$APPDIR/usr/share/applications/OCRtoODT.desktop"
+  --icon-file "$ICON_FILE_SRC"
+  --plugin qt
   --output appimage
+)
+
+info "Running: QMAKE=$QMAKE ${cmd[*]}"
+QMAKE="$QMAKE" "${cmd[@]}"
 
 # ------------------------------------------------------------
 # 11) Rename output to include version
