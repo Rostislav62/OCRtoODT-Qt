@@ -95,6 +95,7 @@ project_dump.txt
 run_build_appimage.sh
 project_dump.txt
 translations/
+.tools/
 
 # ----------------------------
 # AppImage / linuxdeploy artifacts

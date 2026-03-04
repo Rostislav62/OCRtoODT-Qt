@@ -13,7 +13,7 @@ set -euo pipefail
 #  Guarantees:
 #    - Single source of truth: version is read from CMakeLists.txt
 #    - Never runs git clean
-#    - Never deletes anything
+#    - Never deletes source files (removes only build artifacts: build dirs/AppDir/AppImage)
 #    - Ignores untracked/ignored files (your dumps stay untouched)
 # ============================================================
 
@@ -80,7 +80,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "Not a git repository
 # ------------------------------------------------------------
 if $AUTO_COMMIT_VERSION; then
   # Allow ONLY tracked modifications, and ONLY in CMakeLists.txt
-  tracked_changed="$(git status --porcelain | awk '$1 ~ /^M|^A|^D|^R|^C/ {print $2}' || true)"
+  tracked_changed="$(git status --porcelain | awk '$1 ~ /^(M|A|D|R|C)/ {print $2}' || true)"
   # Note: git status --porcelain also prints ??, we ignore those by filtering statuses above.
 
   if [[ -z "$tracked_changed" ]]; then
@@ -190,6 +190,10 @@ cmake --build "$BUILD_DIR" -j"$(nproc)"
 info "Installing into AppDir..."
 cmake --install "$BUILD_DIR" --prefix "$APPDIR/usr"
 
+
+# Sanity: installed binary must exist
+[[ -x "$APPDIR/usr/bin/$APP" ]] || die "Install failed: missing executable $APPDIR/usr/bin/$APP"
+
 # ------------------------------------------------------------
 # 8) Optional: Wayland plugins (best effort)
 # ------------------------------------------------------------
@@ -201,9 +205,7 @@ for so in libqwayland-egl.so libqwayland-generic.so; do
   fi
 done
 
-# ------------------------------------------------------------
-# 9) linuxdeploy presence checks
-# ------------------------------------------------------------
+
 if [[ ! -x "$LINUXDEPLOY" || ! -x "$LINUXDEPLOY_QT" ]]; then
   cat >&2 <<EOF
 ERROR: linuxdeploy tools are missing.
@@ -219,13 +221,68 @@ EOF
   exit 1
 fi
 
+# Make sure linuxdeploy can find the qt plugin AppImage next to it
+export PATH="$PWD:$PATH"
+chmod +x "$LINUXDEPLOY_QT" || true
+# ------------------------------------------------------------
+# Qt6 force (avoid qtchooser falling back to Qt5)
+# ------------------------------------------------------------
+export PATH="/usr/lib/qt6/bin:${PATH}"
+export QT_SELECT=qt6
+
+# Force qmake6
+if [[ -x "/usr/lib/qt6/bin/qmake" ]]; then
+  export QMAKE="/usr/lib/qt6/bin/qmake"
+elif command -v qmake6 >/dev/null 2>&1; then
+  export QMAKE="$(command -v qmake6)"
+else
+  die "Qt6 qmake not found. Install qt6-base-dev-tools / qt6-tools-dev-tools."
+fi
+info "Using QMAKE=${QMAKE}"
+
+# Provide local shims so linuxdeploy-plugin-qt doesn't call qtchooser wrappers
+rm -rf .tools
+mkdir -p .tools
+
+cat > .tools/qmake <<'EOF'
+#!/usr/bin/env bash
+exec /usr/lib/qt6/bin/qmake "$@"
+EOF
+chmod +x .tools/qmake
+
+# qmlimportscanner is required only if plugin decides to deploy QML.
+# If you don't use QML, best is to still provide it when available.
+qml_scanner=""
+for p in \
+  /usr/lib/x86_64-linux-gnu/qt6/libexec/qmlimportscanner \
+  /usr/lib/qt6/libexec/qmlimportscanner \
+  /usr/lib/x86_64-linux-gnu/qt6/bin/qmlimportscanner \
+  /usr/lib/qt6/bin/qmlimportscanner
+do
+  [[ -x "$p" ]] && qml_scanner="$p" && break
+done
+
+if [[ -n "$qml_scanner" ]]; then
+  cat > .tools/qmlimportscanner <<EOF
+#!/usr/bin/env bash
+exec "$qml_scanner" "\$@"
+EOF
+  chmod +x .tools/qmlimportscanner
+  info "Using qmlimportscanner shim -> $qml_scanner"
+else
+  warn "qmlimportscanner not found. If linuxdeploy-plugin-qt tries to deploy QML, it may fail."
+  warn "Fix: install Qt6 QML tools (usually: qt6-declarative-dev-tools / qt6-qmltooling-plugins depending on distro)."
+fi
+
+export PATH="$PWD/.tools:${PATH}"
+
+
 # ------------------------------------------------------------
 # 10) Run linuxdeploy -> produces OCRtoODT-x86_64.AppImage
 # ------------------------------------------------------------
 info "Packaging AppImage via linuxdeploy..."
 unset QML2_IMPORT_PATH QML_IMPORT_PATH QT_PLUGIN_PATH
 
-"$LINUXDEPLOY" \
   --appdir "$APPDIR" \
   --executable "$APPDIR/usr/bin/$APP" \
   --desktop-file "$APPDIR/usr/share/applications/OCRtoODT.desktop" \
