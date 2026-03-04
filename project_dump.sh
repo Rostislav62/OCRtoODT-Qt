@@ -1,67 +1,108 @@
 #!/bin/bash
 
-# ========== CONFIG ==========
+# ================= CONFIG =================
 OUTPUT_FILE="project_dump.txt"
-ROOT_DIR="."   # можно заменить на абсолютный путь к проекту
-# ============================
+ROOT_DIR="."
+# ==========================================
 
-echo "Generating project dump into $OUTPUT_FILE ..."
+echo "Generating clean project dump into $OUTPUT_FILE ..."
 echo "" > "$OUTPUT_FILE"
 
-# ---- 1. STRUCTURE (tree) ----
+# --- Настройки включения ---
+INCLUDE_DIRS=("ui" "src" "settings" "dialogs")
+ROOT_FILES=("CMakeLists.txt" "config.yaml")
+
+# ------------------------------------------
+# 1. FILE LIST
+# ------------------------------------------
 {
-    echo "====================== PROJECT DIRECTORY TREE ======================"
+    echo "====================== FILE LIST ======================"
     echo ""
-    tree -al "$ROOT_DIR"
+
+    # Корневые файлы
+    for f in "${ROOT_FILES[@]}"; do
+        if [ -f "$ROOT_DIR/$f" ]; then
+            echo "$f"
+        fi
+    done
+
+    # Полные папки
+    for dir in "${INCLUDE_DIRS[@]}"; do
+        if [ -d "$ROOT_DIR/$dir" ]; then
+            find "$ROOT_DIR/$dir" -type f
+        fi
+    done
+
+    # docs → только *.md
+    if [ -d "$ROOT_DIR/docs" ]; then
+        find "$ROOT_DIR/docs" -type f -name "*.md"
+    fi
+
+    # resources → только *.qrc
+    if [ -d "$ROOT_DIR/resources" ]; then
+        find "$ROOT_DIR/resources" -type f -name "*.qrc"
+    fi
+
     echo ""
-    echo "********************************************************************"
+    echo "======================================================="
     echo ""
 } >> "$OUTPUT_FILE"
 
-# ---- 2. FILE LIST ----
-{
-    echo "====================== FULL FILE LIST =============================="
-    echo ""
-    find "$ROOT_DIR" -type f \
-        ! -path "*/build/*" \
-        ! -path "*/.git/*" \
-        ! -path "*/.idea/*" \
-        ! -path "*/cmake-build-*/*"
-    echo ""
-    echo "********************************************************************"
-    echo ""
-} >> "$OUTPUT_FILE"
 
-# ---- FUNCTION: append file contents ----
+# ------------------------------------------
+# FUNCTION: dump file content
+# ------------------------------------------
 dump_file() {
     local file="$1"
 
-    # Полный путь
-    local fullpath
-    fullpath="$(realpath "$file")"
-
     {
-        echo "====================== FILE: $fullpath ============================="
+        echo "====================== FILE: $file ======================"
         echo ""
         cat "$file"
         echo ""
-        echo "********************************************************************"
+        echo "=========================================================="
         echo ""
     } >> "$OUTPUT_FILE"
 }
 
 export -f dump_file
 
-# ---- 3. DUMP FILE CONTENTS ----
-find "$ROOT_DIR" -type f \
-    ! -name "$OUTPUT_FILE" \
-    ! -path "*/build/*" \
-    ! -path "*/.git/*" \
-    ! -path "*/.idea/*" \
-    ! -path "*/cmake-build-*/*" \
-    -print0 | while IFS= read -r -d '' file; do
+
+# ------------------------------------------
+# 2. DUMP FILE CONTENTS
+# ------------------------------------------
+
+# Корневые файлы
+for f in "${ROOT_FILES[@]}"; do
+    if [ -f "$ROOT_DIR/$f" ]; then
+        dump_file "$ROOT_DIR/$f"
+    fi
+done
+
+# Полные папки
+for dir in "${INCLUDE_DIRS[@]}"; do
+    if [ -d "$ROOT_DIR/$dir" ]; then
+        find "$ROOT_DIR/$dir" -type f -print0 | \
+        while IFS= read -r -d '' file; do
+            dump_file "$file"
+        done
+    fi
+done
+
+# docs → только md
+if [ -d "$ROOT_DIR/docs" ]; then
+    find "$ROOT_DIR/docs" -type f -name "*.md" -print0 | \
+    while IFS= read -r -d '' file; do
         dump_file "$file"
     done
+fi
+
+# resources → только qrc
+if [ -d "$ROOT_DIR/resources" ]; then
+    find "$ROOT_DIR/resources" -type f -name "*.qrc" -print0 | \
+    while IFS= read -r -d '' file; do
+        dump_file "$file"
+    done
+fi
 
 echo "Done."
-

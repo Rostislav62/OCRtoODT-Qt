@@ -39,36 +39,6 @@ general:
   mode: ram_only
 
 
-
-
-logging:
-  level: 3  # Logging 1.ERROR only, 2.WARNING + ERROR, 3.INFO + WARNING + ERROR, 4.Verbose(DEBUG + Performance)
-  file_path: ocrtoodt.log  # Detailed OCR pipeline log
-  file_output: false
-  gui_output: true
-  enabled: true
-  console_output: true
-
-  # Maximum log file size before rotation (MB)
-  # Allowed values: 1, 2, 5
-  max_file_size_mb: 5
-
-
-
-# Thread settings for UI-related async work:
-threading:
-
-  # PDF providers (PdfPageProvider)
-  pdf_thumbnail_threads: 1    # For rendering PDF thumbnails
-  pdf_page_threads: 2         # For full-page rendering
-
-  # Image providers (ImageThumbnailProvider)
-  image_thumbnail_threads: 2  # For async thumbnails of images
-
-  # Auto mode: override all thread counts based on CPU cores
-  auto: true                # true → ignore numbers above, calculate automatically   false
-
-
 # ============================================================
 #  IMAGE PREPROCESSING CONFIGURATION (CANONICAL STRUCTURE v2)
 # ============================================================
@@ -285,52 +255,127 @@ preprocess:
         R: 128
 
 
-
-
-
 ## ============================================================
 # OCR ENGINE SETTINGS (STRUCTURE-FIRST OCR)
+# GoldenDict-style Language Architecture
 # ============================================================
 
 ocr:
 
-    # ocr_engine_path: thirdparty/tesseract/tesseract
-    # tessdata_dir: thirdparty/tessdata/
+  # ------------------------------------------------------------
+  # ENGINE PATHS
+  # ------------------------------------------------------------
+
   ocr_engine_path: tesseract
-  tessdata_dir: ""
+  tessdata_dir: tessdata
 
-  # OCR languages (ORDER MATTERS)
-  # Will be joined as "rus+eng" for Tesseract
-  languages: eng,rus
+  # ------------------------------------------------------------
+  # LANGUAGE PROFILES
+  # ------------------------------------------------------------
 
-  available_languages:
-    - rus
-    - eng
+  active_profile: default
 
   # ------------------------------------------------------------
   # DPI POLICY
   # ------------------------------------------------------------
 
-  dpi_default: 300          # fallback for unknown sources
-  dpi_scan: 300             # scanned raster pages
-  dpi_vector: 600           # vector PDF (text-based)
+  dpi_default: 300
+  dpi_scan: 300
+  dpi_vector: 600
 
-  # If image resolution is low (e.g. phone camera),
-  # OCR engine will override DPI automatically.
-  dpi_low_res_threshold: 1500   # px (longest side)
+  dpi_low_res_threshold: 1500
   dpi_low_res_value: 96
 
   # ------------------------------------------------------------
   # TESSERACT ENGINE CONTROL
   # ------------------------------------------------------------
 
-  tesseract_oem: 1           # 1 = LSTM only (recommended)
-  psm_1: 4             # main pass (single column)
-  psm_2: 3                      # auto layout
-  psm_3: 6                      # single uniform block
+  tesseract_oem: 1
+  psm_1: 4
+  psm_2: 3
+  psm_3: 6
+
+
+# --- ODT document builder settings ---
+odt:
+  paper_size: A4
+
+  # ==========================================================
+  # ==== UI-controlled typography ============================
+  # ==========================================================
+
+  # Default font family (UI)
+  font_name: Ubuntu Sans
+
+  # Font size in points (UI)
+  font_size_pt: 13
+
+  # Text alignment (UI) — left, center, right, justify
+  text_align: justify
+
+  # First line indent in millimeters (UI)
+  first_line_indent_mm: 20
+
+  # Paragraph spacing after paragraph (pt) (UI)
+  paragraph_spacing_after_pt: 6
+
+  # Line height as percentage (UI) — 100 = normal
+  line_height_percent: 100
+
+
+  # ==========================================================
+  # ==== Page layout =========================================
+  # ==========================================================
+
+  # Page margins in millimeters (UI)
+  margin_left_mm: 20
+  margin_right_mm: 15
+  margin_top_mm: 20
+  margin_bottom_mm: 15
+
+  # Insert page breaks between OCR pages (UI)
+  page_break: true
+
+
+  # ==========================================================
+  # ==== Structural normalization (UI-controlled) ============
+  # ==========================================================
+
+  # Maximum allowed consecutive empty lines (0–3)
+  # 0 = do not preserve empty lines
+  max_empty_lines: 1
 
 
 
+
+
+
+logging:
+  level: 3  # Logging 1.ERROR only, 2.WARNING + ERROR, 3.INFO + WARNING + ERROR, 4.Verbose(DEBUG + Performance)
+  file_path: ocrtoodt.log  # Detailed OCR pipeline log
+  file_output: false
+  gui_output: true
+  enabled: true
+  console_output: true
+
+  # Maximum log file size before rotation (MB)
+  # Allowed values: 1, 2, 5
+  max_file_size_mb: 5
+
+
+
+# Thread settings for UI-related async work:
+threading:
+
+  # PDF providers (PdfPageProvider)
+  pdf_thumbnail_threads: 1    # For rendering PDF thumbnails
+  pdf_page_threads: 2         # For full-page rendering
+
+  # Image providers (ImageThumbnailProvider)
+  image_thumbnail_threads: 2  # For async thumbnails of images
+
+  # Auto mode: override all thread counts based on CPU cores
+  auto: true                # true → ignore numbers above, calculate automatically   false
 
 
   # ------------------------------------------------------------
@@ -543,61 +588,12 @@ document:
     output_dir: "cache/document/"
 
 
-# --- ODT document builder settings ---
-odt:
-  paper_size: A4
-
-  # ==========================================================
-  # ==== UI-controlled typography ============================
-  # ==========================================================
-
-  # Default font family (UI)
-  font_name: Ubuntu Sans
-
-  # Font size in points (UI)
-  font_size_pt: 13
-
-  # Text alignment (UI) — left, center, right, justify
-  text_align: justify
-
-  # First line indent in millimeters (UI)
-  first_line_indent_mm: 20
-
-  # Paragraph spacing after paragraph (pt) (UI)
-  paragraph_spacing_after_pt: 6
-
-  # Line height as percentage (UI) — 100 = normal
-  line_height_percent: 100
-
-
-  # ==========================================================
-  # ==== Page layout =========================================
-  # ==========================================================
-
-  # Page margins in millimeters (UI)
-  margin_left_mm: 20
-  margin_right_mm: 15
-  margin_top_mm: 20
-  margin_bottom_mm: 15
-
-  # Insert page breaks between OCR pages (UI)
-  page_break: true
-
-
-  # ==========================================================
-  # ==== Structural normalization (UI-controlled) ============
-  # ==========================================================
-
-  # Maximum allowed consecutive empty lines (0–3)
-  # 0 = do not preserve empty lines
-  max_empty_lines: 1
-
 
 
 # --- GUI (Qt interface) settings ---
 ui:
   toolbar_icon_size: 24
-  theme_mode: dark  # light / dark / auto / system
+  theme_mode: light  # light / dark / auto / system
   custom_qss:   # optional path to user .qss
 
   app_font_family: Ubuntu  # if empty → системный
@@ -627,7 +623,7 @@ ui:
   #         (preprocess, OCR tuning, logging, etc.).
   #         These settings directly influence OCR quality.
   # ----------------------------------------------------------
-  expert_mode: false
+  expert_mode: true
 
   # Show or hide specific tabs in Settings dialog
   show_preprocess_tab: true    # false → hide Preprocess tab
