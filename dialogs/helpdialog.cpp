@@ -111,9 +111,9 @@ HelpDialog::~HelpDialog()
 void HelpDialog::loadMarkdown()
 {
     qDebug() << "Resource exists?"
-             << QFile::exists(":/docs/README.md");
+             << QFile::exists(":/docs/README_DEVELOPER.md");
 
-    QFile file(":/docs/README.md");
+    QFile file(":/docs/README_DEVELOPER.md");
 
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         ui->textBrowser->setText("ERROR: Could not load README.md");
