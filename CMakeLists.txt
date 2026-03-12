@@ -19,7 +19,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(OCRtoODT VERSION 3.0.5 LANGUAGES CXX)
+project(OCRtoODT VERSION 3.0.6 LANGUAGES CXX)
 
 # ------------------------------------------------------------
 # Application version (available in C++ as APP_VERSION)
@@ -435,7 +435,7 @@ add_executable(OCRtoODT
 
     ${UI_FILES}
     ${RESOURCE_FILES}
-    docs/README.md
+
     resources/styles/general_cards.qss
     docs/config_schema.md
     src/core/CrashHandler.h
@@ -458,6 +458,12 @@ add_executable(OCRtoODT
     src/core/ocr/LanguageDownloader.h
     src/core/ocr/LanguageDownloader.cpp
     scripts/tag_from_cmake.sh
+    README.md
+    docs/README_DEVELOPER.md
+    CHANGELOG.md
+    THIRD_PARTY_NOTICES.md
+    SECURITY.md
+    SUPPORT.md
 )
 
 # ============================================================

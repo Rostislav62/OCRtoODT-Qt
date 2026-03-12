@@ -304,6 +304,14 @@ mv "${APP}-${ARCH}.AppImage" "$OUT_APPIMAGE"
 info "SUCCESS: Built ${OUT_APPIMAGE}"
 ls -lah "$OUT_APPIMAGE"
 
+# ------------------------------------------------------------
+# 12) Generate SHA256SUMS (local)
+# ------------------------------------------------------------
+info "Generating SHA256SUMS..."
+sha256sum "$OUT_APPIMAGE" > SHA256SUMS
+info "Wrote SHA256SUMS:"
+cat SHA256SUMS
+
 
 # ============================================================
 #  OCRtoODT — One-command Release Builder (Local + GitHub)
