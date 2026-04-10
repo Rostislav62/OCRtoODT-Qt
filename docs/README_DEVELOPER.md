@@ -1,32 +1,19 @@
-# **🧠 OCRtoODT**
+# OCRtoODT — Developer Documentation
 
-## **Structured OCR Extraction & Deterministic Processing Engine**
+Technical documentation for contributors and maintainers of OCRtoODT.
 
-<p align="center">
-  <img src="resources/sample/logo_placeholder.png" width="180"/>
-</p>
+This document covers:
 
-<p align="center">
-  <img alt="C++17" src="https://img.shields.io/badge/C++-17-blue.svg"/>
-  <img alt="Qt 6" src="https://img.shields.io/badge/Qt-6-green.svg"/>
-  <img alt="Tesseract Embedded" src="https://img.shields.io/badge/OCR-Tesseract-informational"/>
-  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"/>
-  <img alt="Platform" src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey"/>
-</p>
+- development workflow
+- containerized Linux setup
+- build instructions
+- release workflow
+- project architecture
+- runtime configuration
 
-## 📥 Download
+For end users, see the root `README.md`.
 
-Prebuilt AppImage is available on the Releases page.
-
-Latest release:
-
-https://github.com/Rostislav62/OCRtoODT-Qt/releases/latest
-
-Download and run:
-
-chmod +x OCRtoODT-x86_64.AppImage  
-./OCRtoODT-x86_64.AppImage
-
+Release packaging details are documented separately in `docs/RELEASING_APPIMAGE.md`.
 
 ## 🚀 One-command AppImage Release (Local + GitHub)
 
@@ -34,601 +21,387 @@ OCRtoODT uses a **single source of truth** for releases: the version declared in
 
 `project(OCRtoODT VERSION X.Y.Z LANGUAGES CXX)`
 
-Based on that version, the project provides a unified release script: `build\_appimage.sh`.
+Based on that version, the project provides a unified release script: `build_appimage.sh`.
 
 It guarantees:
 
 - Version is read **only** from `CMakeLists.txt`
-
 - Git tag must be exactly `vX.Y.Z` and must point to the current `HEAD`
-
-- Local AppImage output is always named:  
-`OCRtoODT-vX.Y.Z-x86\_64.AppImage`
-
+- Local AppImage output is always named: `OCRtoODT-vX.Y.Z-x86_64.AppImage`
 - Optional push of commit + tag to GitHub to trigger GitHub Actions release build
-
 - No `git clean` is ever executed
-
 - Untracked/ignored local files (dumps, experiments, etc.) are not touched and do not block the release
-
 
 ## ✅ Script modes
 
 ### 1) Full release (local + GitHub)
 
-- Auto-commit version bump (only when the **only tracked change** is `CMakeLists.txt`)
-
-- Auto-create the required tag `vX.Y.Z` (if missing on `HEAD`)
-
+- Auto-commit version bump, but only when the **only tracked change** is `CMakeLists.txt`
+- Auto-create the required tag `vX.Y.Z` if missing on `HEAD`
 - Push branch + tag to `origin`
-
 - Build local AppImage
 
 ### 2) Local-only build (`--no-push`)
 
 - Same validation/build pipeline
+- **No push** to GitHub
 
-- **No push** to GitHub (useful for pre-flight testing)
-
-
-## 📌 Release workflow (single correct path)
+## 📌 Release workflow
 
 ### 1) Change only the version in CMake
 
-Edit `CMakeLists.txt`:  
-`project(OCRtoODT VERSION 3.0.5 LANGUAGES CXX)`
+Edit `CMakeLists.txt`:
 
-Do not modify other tracked files.
-
-### 2) Run one command
-
-Full release (local + GitHub):
-
-```
-chmod +x build\_appimage.sh
-
-./build\_appimage.sh --auto-commit-version
+```cmake
+project(OCRtoODT VERSION 3.0.5 LANGUAGES CXX)
 ```
 
-Local-only (no GitHub push):
-
-```
-./build\_appimage.sh --auto-commit-version --no-push
-```
-
-
-## 🔒 Anti-desync guards (what is enforced)
-
-The script hard-validates:
-
-- No staged/unstaged **tracked** changes (deterministic release)
-
-- Version from `CMakeLists.txt` is `X.Y.Z`
-
-- `HEAD` has an exact tag `vX.Y.Z`
-
-- Output file name always includes the version:  
-`OCRtoODT-vX.Y.Z-x86\_64.AppImage`
-
-### Auto-commit behavior (`--auto-commit-version`)
-
-When `--auto-commit-version` is enabled, the script will auto-commit **only** if:
-
-- the **only tracked change** is `CMakeLists.txt`
-
-Then it runs:
-
-- `git add CMakeLists.txt`
-
-- `git commit -m "Bump version to X.Y.Z"`
-
-If any other tracked file is modified, it refuses to proceed.
-
-
-## 🧩 Local AppImage prerequisites
-
-The repository root must contain:
-
-- `linuxdeploy-x86\_64.AppImage`
-
-- `linuxdeploy-plugin-qt-x86\_64.AppImage`
-
-If missing, download once:
-
-```
-wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86\_64.AppImage \\
-
-  -O linuxdeploy-x86\_64.AppImage
-
-wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86\_64.AppImage \\
-
-  -O linuxdeploy-plugin-qt-x86\_64.AppImage
-
-chmod +x linuxdeploy-x86\_64.AppImage linuxdeploy-plugin-qt-x86\_64.AppImage
-```
-
-### Qt6 note (linuxdeploy-plugin-qt)
-
-Some environments may default to Qt5/qtchooser. The script forces Qt6 `qmake` and provides local shims (when needed) to ensure reproducible packaging with `linuxdeploy-plugin-qt`.
-
-
-## **📌 Overview**
-
-**OCRtoODT** is a professional-grade, structured OCR extraction system built in modern C++ (Qt 6).
-
+Do not modify other tracked files.  
+### **2) Run one command**  
+Full release:  
+chmod +x build_appimage.sh  
+ ./build_appimage.sh --auto-commit-version  
+Local-only:  
+./build_appimage.sh --auto-commit-version --no-push  
+## **🔒 Anti-desync guards**  
+The release script validates:  
+-  no staged/unstaged **tracked** changes   
+-  version from CMakeLists.txt is X.Y.Z  
+- HEAD has an exact tag vX.Y.Z  
+- output file name always includes the version  
+### **Auto-commit behavior (** **--auto-commit-version** **)**  
+When --auto-commit-version is enabled, the script auto-commits **only** if the  **only tracked change** is CMakeLists.txt.  
+Then it runs:  
+git add CMakeLists.txt  
+ git commit -m "Bump version to X.Y.Z"  
+If any other tracked file is modified, it refuses to proceed.  
+## **🧩 Local AppImage prerequisites**  
+The repository root must contain:  
+- linuxdeploy-x86_64.AppImage  
+- linuxdeploy-plugin-qt-x86_64.AppImage  
+If missing, download them once:  
+wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \  
+   -O linuxdeploy-x86_64.AppImage  
+   
+ wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage \  
+   -O linuxdeploy-plugin-qt-x86_64.AppImage  
+   
+ chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage  
+### **Qt6 note**  
+Some environments may default to Qt5 or qtchooser. The release script forces Qt6 qmake and provides local shims when needed to keep packaging reproducible.  
+## **📌 Overview**  
+**OCRtoODT** is a deterministic, inspectable OCR extraction system built in modern C++ with Qt 6.  
 It is not a text editor.  
- It is not a word processor.
-
-It is a **deterministic, inspectable OCR data pipeline** designed for:
-
-- archival digitization
-
-- research workflows
-
-- legal and academic OCR
-
-- structured document processing
-
-- reproducible OCR experiments
-
-The focus is on:
-
-- structural correctness
-
-- predictable multi-stage processing
-
-- RAM-first execution
-
-- full traceability
-
-# **🎯 Philosophy**
-
-Structure first. Formatting later.
-
-OCRtoODT preserves raw OCR results and transforms them into structured representations without hidden modifications.
-
-The application guarantees:
-
-- deterministic pipeline execution
-
-- no silent post-processing distortion
-
-- explicit configuration control
-
-- isolated stage responsibilities
-
-# **🏗 Processing Pipeline**
-
-OCRtoODT is built as a strict stage-based engine:
-
-STEP 0 → Input
-
-STEP 1 → Preprocess
-
-STEP 2 → OCR
-
-STEP 3 → TSV Structuring
-
-STEP 4 → UI Synchronization
-
-STEP 5 → Export
-
-
-Each stage:
-
-- has a defined contract
-
-- produces predictable output
-
-- does not access UI logic
-
-- avoids ownership violations
-
-## **🔹 STEP 0 — Input**
-
-- PDF loading (Poppler-Qt6)
-
-- Raster image import (PNG, JPEG, TIFF)
-
-- Page expansion
-
-- Thumbnail generation
-
-- VirtualPage construction
-
-## **🔹 STEP 1 — Preprocessing**
-
-OpenCV-based:
-
-- grayscale normalization
-
-- adaptive thresholding (Sauvola)
-
-- CLAHE
-
-- shadow removal
-
-- sharpening
-
-Threaded and resource-aware.
-
-## **🔹 STEP 2 — OCR**
-
-- Embedded **Tesseract**
-
-- Multi-pass PSM execution
-
-- Quality scoring
-
-- Best-pass selection
-
-- RAM-first TSV handling
-
-- Cooperative cancellation
-
-Tesseract is included inside the project:
-
-thirdparty/tesseract/
-
-thirdparty/tessdata/
-
-
-No external system Tesseract installation is required.
-
-## **🔹 STEP 3 — TSV Structuring**
-
-- TSV → LineTable conversion
-
-- Structural line grouping
-
-- RAM-first processing
-
-- Optional debug disk persistence
-
-## **🔹 STEP 4 — UI Synchronization**
-
-- Preview ↔ Text mapping
-
-- Line highlighting
-
-- Structured inspection
-
-The UI never performs OCR logic.
-
-## **🔹 STEP 5 — Export**
-
-- ODT export
-
-- TXT export
-
-- Structured document building
-
-# **🧱 Core Data Model**
-
-## **Core::VirtualPage**
-
-Central pipeline object.
-
-Contains:
-
-- source metadata
-
-- OCR TSV text
-
-- OCR success flag
-
-- structured LineTable
-
-- layout extensions (future-ready)
-
-Single source of truth across all stages.
-
-# **⚙ Execution Model**
-
-## **RAM-First Design**
-
-Primary data storage: memory  
- Disk: optional and policy-driven
-
-Modes:
-
-- ram\_only
-
-- disk\_only
-
-- debug\_mode
-
-Configured via config.yaml.
-
-# **📊 Progress System**
-
-Centralized ProgressManager:
-
-- stage-aware progress
-
-- global percentage
-
-- ETA support
-
-- cancellation-safe reset
-
-- deterministic finish handling
-
-# **🧾 Logging System**
-
-LogRouter:
-
-- canonical log levels (0–4)
-
-- runtime verbosity control
-
-- file + console routing
-
-- profiling-ready
-
-Designed for auditability and diagnostics.
-
-# **🖥 Graphical Interface**
-
-Built with Qt 6 Widgets.
-
-### **Main UI Areas**
-
-- 📂 Input panel (files + thumbnails)
-
-- 🖼 Preview panel (zoom, fit, highlight)
-
-- 📑 Structured text panel
-
-- ⚙ Settings dialog
-
-- 📤 Export dialog
-
-The UI is inspection-focused, not editing-focused.
-
-# **🖼 Screenshots**
-
-
-### **Main Window**
-
-<p align="left">
-  <img src="main_window.png" width="700"/>
-</p>
-
-### **Structured Text View**
-
-<p align="left">
-  <img src="text_panel.png" width="700"/>
-</p>
-
-### **Settings Dialog** (General)
-
-<p align="left">
-  <img src="settings_general.png" width="700"/>
-</p>
-
-### **Settings Dialog** (Recognition)
-
-<p align="left">
-  <img src="settings_recognition.png" width="700"/>
-</p>
-
-### **Settings Dialog** (ODT)
-
-<p align="left">
-  <img src="settings_odt.png" width="700"/>
-</p>
-
-
-### **Settings Dialog** (Interface)
-
-<p align="left">
-  <img src="settings_interface.png" width="700"/>
-</p>
-
-# **🗂 Repository Structure**
-
-src/
-
- ├── 0\_input/
-
- ├── 1\_preprocess/
-
- ├── 2\_ocr/
-
- ├── 3\_LineTextBuilder/
-
- ├── 4\_edit\_lines/
-
- ├── 5\_export/
-
- ├── 5\_document/
-
- └── core/
-
-
-dialogs/
-
-settings/
-
-systeminfo/
-
-
-thirdparty/
-
- ├── tesseract/
-
- └── tessdata/
-
-
-resources/
-
-
-Modular, stage-aligned structure.
-
-# **🔧 Build Instructions**
-
-## **Requirements**
-
-- C++17 compatible compiler
-
-- Qt 6 (Core, Widgets, Concurrent, Multimedia)
-
-- OpenCV
-
-- Poppler-Qt6
-
-- CMake ≥ 3.16
-
-## **📦 Build (Generic)**
-
-git clone https://github.com/Rostislav62/OCRtoODT.git
-
-cd OCRtoODT
-
-
-mkdir build
-
-cd build
-
-
-cmake ..
-
-cmake --build . -j
-
-
-Run:
-
-./OCRtoODT
-
-
-# **🐧 How to Compile on Linux (Ubuntu / Debian)**
-
-## **Install Dependencies**
-
-sudo apt update
-
-
-sudo apt install \\
-
-    build-essential \\
-
-    cmake \\
-
-    qt6-base-dev \\
-
-    qt6-multimedia-dev \\
-
-    qt6-tools-dev \\
-
-    libopencv-dev \\
-
-    libpoppler-qt6-dev
-
-
-If Qt 6 is installed in a custom location:
-
-cmake .. -DCMAKE\_PREFIX\_PATH=/path/to/Qt/6.x/gcc\_64
-
-
-Then build:
-
-cmake --build . -j$(nproc)
-
-
-Run:
-
-./OCRtoODT
-
-
-# **🪟 Windows Build (Conceptual)**
-
-- Install Qt 6 (MSVC)
-
-- Install OpenCV
-
-- Install Poppler-Qt6
-
-- Use Qt Creator or CMake + MSVC
-
-- Ensure PATH includes Qt runtime DLLs
-
-# **🧪 Configuration**
-
-All runtime behavior is controlled via:
-
-config.yaml
-
-
-Features:
-
-- hierarchical structure
-
-- comment-preserving parser
-
-- safe runtime reload
-
-Example:
-
-general:
-
-  mode: ram\_only
-
-  debug\_mode: false
-
-
-ocr:
-
-  languages: eng
-
-  psm\_1: 4
-
-  psm\_2: 6
-
-
-ui:
-
-  theme\_mode: dark
-
-  thumbnail\_size: 160
-
-
-# **🧠 Technical Stack**
-
-| **Component** | **Technology** |
-| :-: | :-: |
-| Language | C++17 |
-| GUI | Qt 6 |
-| OCR | Embedded Tesseract |
-| Image Processing | OpenCV |
-| PDF Handling | Poppler-Qt6 |
-| Concurrency | QtConcurrent |
-| Config | Custom YAML (comment-preserving) |
-| Platforms | Linux / Windows / macOS |
-
-# **🚧 Roadmap**
-
-Future directions:
-
-- advanced paragraph recovery
-
-- column detection improvements
-
-- footnote handling
-
-- layout reconstruction
-
-- packaging (AppImage / Windows bundle)
-
-- performance profiling dashboard
-
-# **👨💻 Author**
-
-**Rostislav Smigliuc**
-
-GitHub: [https://github.com/Rostislav62/](https://github.com/Rostislav62/)
-
-# **📜 License**
-
-MIT License
-
+  It is not a word processor.  
+It is a structured OCR data pipeline designed for:  
+- archival digitization  
+- research workflows  
+- legal and academic OCR  
+- structured document processing  
+- reproducible OCR experiments  
+Core goals:  
+- structural correctness  
+- predictable multi-stage processing  
+- RAM-first execution  
+- traceability  
+# **🎯 Philosophy**  
+Structure first. Formatting later.  
+OCRtoODT preserves raw OCR results and transforms them into structured representations without hidden modifications.  
+The application aims for:  
+- deterministic pipeline execution  
+- no silent post-processing distortion  
+- explicit configuration control  
+- isolated stage responsibilities  
+# **🏗 Processing Pipeline**  
+OCRtoODT is built as a strict stage-based engine:  
+- STEP 0 → Input  
+- STEP 1 → Preprocess  
+- STEP 2 → OCR  
+- STEP 3 → TSV Structuring  
+- STEP 4 → UI Synchronization  
+- STEP 5 → Export  
+Each stage:  
+- has a defined contract  
+- produces predictable output  
+- does not own UI logic  
+- avoids ownership violations  
+## **🔹 STEP 0 — Input**  
+- PDF loading (Poppler-Qt6)  
+- Raster image import (PNG, JPEG, TIFF)  
+- Page expansion  
+- Thumbnail generation  
+- VirtualPage construction  
+## **🔹 STEP 1 — Preprocessing**  
+OpenCV-based:  
+- grayscale normalization  
+- adaptive thresholding  
+- CLAHE  
+- shadow removal  
+- sharpening  
+Threaded and resource-aware.  
+## **🔹 STEP 2 — OCR**  
+- Embedded Tesseract  
+- Multi-pass PSM execution  
+- Quality scoring  
+- Best-pass selection  
+- RAM-first TSV handling  
+- Cooperative cancellation  
+## **🔹 STEP 3 — TSV Structuring**  
+- TSV → LineTable conversion  
+- Structural line grouping  
+- RAM-first processing  
+- Optional debug disk persistence  
+## **🔹 STEP 4 — UI Synchronization**  
+- Preview ↔ text mapping  
+- Line highlighting  
+- Structured inspection  
+The UI does not perform OCR logic.  
+## **🔹 STEP 5 — Export**  
+- ODT export  
+- TXT export  
+- DOCX export  
+- Structured document building  
+# **🧱 Core Data Model**  
+## **Core::VirtualPage**  
+Central pipeline object.  
+Contains:  
+- source metadata  
+- OCR TSV text  
+- OCR success flag  
+-  structured LineTable  
+- layout extensions for future work  
+It is the single source of truth across the pipeline.  
+# **⚙ Execution Model**  
+## **RAM-first design**  
+Primary data storage is memory.  
+  Disk use is optional and policy-driven.  
+Modes:  
+- ram_only  
+- disk_only  
+- debug_mode  
+Configured via config.yaml.  
+# **📊 Progress System**  
+Centralized ProgressManager provides:  
+- stage-aware progress  
+- global percentage  
+- ETA support  
+- cancellation-safe reset  
+- deterministic finish handling  
+# **🧾 Logging System**  
+LogRouter provides:  
+- canonical log levels (0–4)  
+- runtime verbosity control  
+- file + console routing  
+- profiling-oriented diagnostics  
+Designed for auditability and debugging.  
+# **🖥 Graphical Interface**  
+Built with Qt 6 Widgets.  
+Main UI areas:  
+- input panel (files + thumbnails)  
+- preview panel (zoom, fit, highlight)  
+- structured text panel  
+- settings dialog  
+- export dialog  
+The UI is inspection-focused, not editing-focused.  
+# **🗂 Repository Structure**  
+src/  
+  ├── 0_input/  
+  ├── 1_preprocess/  
+  ├── 2_ocr/  
+  ├── 3_LineTextBuilder/  
+  ├── 4_edit_lines/  
+  ├── 5_export/  
+  ├── 5_document/  
+  └── core/  
+   
+ dialogs/  
+ settings/  
+ resources/  
+ docs/  
+ scripts/  
+The layout is modular and stage-aligned.  
+# **🔧 Build Instructions**  
+## **Linux development: recommended workflow**  
+For Linux contributors, the recommended workflow is:  
+- edit the project in Qt Creator  
+- build in Podman  
+- run in Podman  
+- avoid installing the full dependency stack on the host  
+This keeps the host system cleaner and avoids dependency drift between machines.  
+## **Containerized development workflow (Podman)**  
+OCRtoODT supports an isolated Podman-based development workflow on Linux.  
+This workflow is recommended when you want:  
+- reproducible builds  
+- a clean host system  
+- isolated project dependencies  
+- consistent Qt / OpenCV / Poppler / Tesseract environment  
+How it works:  
+- source files remain on the host  
+- the project is edited normally in Qt Creator  
+- build and run happen inside a Podman container  
+- the container mounts the project directory  
+- the runtime container also mounts the user home directory for file access  
+This avoids host-side dependency mismatches and makes development more reproducible.  
+## **Podman development scripts**  
+The Linux containerized workflow uses these helper scripts:  
+- scripts/dev-shell.sh — open an interactive shell inside the development container   
+- scripts/configure.sh — run CMake configure inside the container   
+- scripts/build.sh — build the project inside the container   
+- scripts/rebuild-in-podman.sh — rebuild the project from the host using Podman   
+- scripts/run-in-podman.sh — run the application inside the container   
+- scripts/rebuild-and-run.sh — rebuild and immediately run the application   
+## **Requirements**  
+General build requirements:  
+- C++17 compatible compiler  
+- CMake  
+- Ninja  
+- Qt 6  
+- OpenCV  
+- Poppler-Qt6  
+- Tesseract development libraries  
+- Podman for the recommended Linux workflow  
+## **Generic build (non-container)**  
+Standard CMake build flow:  
+git clone https://github.com/Rostislav62/OCRtoODT.git  
+ cd OCRtoODT  
+   
+ mkdir build  
+ cd build  
+   
+ cmake ..  
+ cmake --build . -j  
+Run:  
+./OCRtoODT  
+For Linux contributors, this is not the preferred daily workflow. The recommended Linux development path is the Podman-based workflow described below.  
+# **Linux development (Qt Creator + Podman)**  
+## **Qt Creator workflow**  
+Recommended workflow:  
+-  open the project in Qt Creator using **Open Workspace**  
+- edit files normally in Qt Creator  
+- use an external terminal for build and run  
+- do not rely on host-side dependency resolution for this workflow  
+Practical model:  
+- **Qt Creator** = editor / navigation / forms / code model   
+- **Podman** = build environment and runtime environment   
+## **Typical development loop**  
+Project path on host:  
+/home/dev/projects/cpp/OCRtoODT  
+### **Rebuild**  
+cd /home/dev/projects/cpp/OCRtoODT  
+ ./scripts/rebuild-in-podman.sh  
+### **Run**  
+cd /home/dev/projects/cpp/OCRtoODT  
+ ./scripts/run-in-podman.sh  
+### **Rebuild and run**  
+cd /home/dev/projects/cpp/OCRtoODT  
+ ./scripts/rebuild-and-run.sh  
+## **Host vs container responsibilities**  
+### **Run on the host**  
+These scripts must be executed from the host system:  
+- ./scripts/dev-shell.sh  
+- ./scripts/rebuild-in-podman.sh  
+- ./scripts/run-in-podman.sh  
+- ./scripts/rebuild-and-run.sh  
+### **Run inside the container**  
+These commands are intended to run inside the container:  
+- ./scripts/configure.sh  
+- ./scripts/build.sh  
+- ./build/podman-debug/OCRtoODT  
+Container mount mapping:  
+-  host: /home/dev/projects/cpp/OCRtoODT  
+-  container: /workspace  
+Editing a file on the host immediately affects the same mounted project inside the container.  
+## **Why runtime execution uses the container**  
+The development binary is built against the libraries installed inside the Podman image.  
+If the host system provides different Qt runtime versions than the container, launching the raw binary directly on the host may fail with shared-library or symbol-version errors.  
+For that reason, the recommended development run path is:  
+./scripts/run-in-podman.sh  
+This guarantees that build-time and run-time libraries are identical.  
+## **Access to user files during containerized run**  
+The Podman runtime script mounts the user home directory into the container.  
+That means the application can access normal user folders during development, including:  
+- Pictures  
+- Documents  
+- Downloads  
+This allows realistic file-import testing without copying files into the container manually.  
+## **Optional host-side dependency installation**  
+If you explicitly want to build on the host instead of using Podman, install dependencies such as:  
+sudo apt update  
+ sudo apt install \  
+     build-essential \  
+     cmake \  
+     ninja-build \  
+     qt6-base-dev \  
+     qt6-multimedia-dev \  
+     qt6-tools-dev \  
+     qt6-svg-dev \  
+     libopencv-dev \  
+     libpoppler-qt6-dev \  
+     libtesseract-dev \  
+     libleptonica-dev \  
+     libarchive-dev \  
+     libzip-dev  
+Then use the normal CMake workflow.  
+# **Windows build notes**  
+Current Windows build expectations:  
+- Qt 6 with MSVC toolchain  
+- OpenCV  
+- Poppler-Qt6  
+- CMake + Ninja or Qt Creator  
+-  runtime DLL availability in PATH or beside the executable   
+Windows packaging and workflow details should be documented separately as they stabilize.  
+# **🧪 Configuration**  
+All runtime behavior is controlled via:  
+config.yaml  
+Features:  
+- hierarchical structure  
+- comment-preserving parser  
+- safe runtime reload  
+Example:  
+general:  
+   mode: ram_only  
+   debug_mode: false  
+   
+ ocr:  
+   languages: eng  
+   psm_1: 4  
+   psm_2: 6  
+   
+ ui:  
+   theme_mode: dark  
+   thumbnail_size: 160  
+# **🧠 Technical Stack**  
+| | |  
+|-|-|  
+| **Component** | **Technology** |   
+| Language | C++17 |   
+| GUI | Qt 6 |   
+| OCR | Embedded Tesseract |   
+| Image Processing | OpenCV |   
+| PDF Handling | Poppler-Qt6 |   
+| Concurrency | QtConcurrent |   
+| Config | Custom YAML (comment-preserving) |   
+| Platforms | Linux / Windows / macOS |   
+# **🚧 Roadmap**  
+## **Developer quick reference**  
+### **Open container shell**  
+./scripts/dev-shell.sh  
+### **Rebuild project**  
+./scripts/rebuild-in-podman.sh  
+### **Run application**  
+./scripts/run-in-podman.sh  
+### **Rebuild and run**  
+./scripts/rebuild-and-run.sh  
+Future directions:  
+- advanced paragraph recovery  
+- column detection improvements  
+- footnote handling  
+- layout reconstruction  
+- packaging improvements  
+- performance profiling dashboard  
+# **👨‍💻 Author**  
+**Rostislav Smigliuc**  
+GitHub: [https://github.com/Rostislav62/](https://github.com/Rostislav62/ "https://github.com/Rostislav62/")  
+# **📜 License**  
+MIT License  
+   
